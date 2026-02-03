@@ -47,28 +47,3 @@ export type IndexPackRecord = {
   status: "pending" | "ready" | "error";
   createdAt: string;
 };
-
-export type SessionRecord = {
-  id: string;
-  data: Record<string, unknown>;
-  expiresAt: string;
-  createdAt: string;
-};
-
-export type DriveFolder = {
-  id: string;
-  name: string;
-  parentId: string | null;
-  createdAt: string;
-};
-
-export type DriveFile = {
-  id: string;
-  name: string;
-  parentId: string;
-  mimeType: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  version: number;
-};

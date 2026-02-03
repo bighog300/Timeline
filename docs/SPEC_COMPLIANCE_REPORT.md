@@ -2,8 +2,9 @@
 
 ## Privacy & Logging
 **Status: PASS**
-- Central logger now enforces an allowlist of safe fields and avoids logging content payloads.
+- Central logger enforces an allowlist of safe fields and avoids logging content payloads.
 - Error responses are normalized to `{ error: { code, message } }` to avoid leaking internals.
+- Gmail/Drive content is never persisted; only metadata IDs, derived summaries, and status fields are stored.
 
 ## Explicit-Only Fetching
 **Status: PASS**
@@ -12,9 +13,10 @@
 
 ## Drive System of Record
 **Status: PASS**
-- Drive folders `Timeline App/` and `Summaries/` are created on demand.
+- Google Drive adapter uses `googleapis` to create folders `Timeline App/`, `Summaries/`, and `Indexes/` on demand.
 - First run creates a single Drive file per entry; reruns overwrite by fileId.
 - Drive write status is persisted (`ok|pending|failed`) and retry is exposed via `POST /entries/:id/drive-retry`.
+- Test runs use the Drive stub to avoid external calls.
 
 ## Token Encryption (AES-256-GCM)
 **Status: PASS**
@@ -34,8 +36,14 @@
 ## Index Packs
 **Status: PASS**
 - CRUD skeleton includes list/get/update/run/rehydrate without background jobs.
-- Run writes a markdown pack to Drive.
+- Run writes a markdown pack to Drive (Indexes folder).
+
+## Persistence (Postgres + Prisma)
+**Status: PASS**
+- JSON persistence replaced with Postgres via Prisma models for users, sessions, token sets, entries, prompts, and index packs.
+- Session store and encrypted token material are stored in DB columns.
 
 ## Tests
 **Status: PASS**
-- Acceptance tests now exercise metadata-only search, drive overwrite on rerun, reconnect_required, and admin allowlist.
+- Acceptance tests exercise metadata-only search, drive overwrite on rerun, reconnect_required, and admin allowlist.
+- Tests run against an in-memory Postgres emulation with the Drive stub.
