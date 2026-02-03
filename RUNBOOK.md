@@ -21,8 +21,11 @@
 
 ## npm install 403 (Forbidden)
 - Confirm registry is set to the public npm registry:
+  - `.npmrc` in the repo root and `apps/api/.npmrc` should point at `https://registry.npmjs.org/`.
   - `npm config set registry https://registry.npmjs.org/`
 - Check for unintended registry overrides:
   - `.npmrc` in the repo, user home, or environment variables like `NPM_CONFIG_REGISTRY`.
 - Verify proxy environment variables (such as `http-proxy`/`https-proxy`) are not pointing at a blocked registry.
 - If you are behind a corporate registry, ensure your auth token is valid or temporarily unset the proxy variables.
+- If a global npmrc is forcing a private registry, override with:
+  - `npm --registry=https://registry.npmjs.org/ install`

@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String          @id @default(uuid()) @map("id")
+  email     String          @unique @map("email")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  sessions  Session[]
+  tokens    GoogleTokenSet?
+  entries   TimelineEntry[]
+  indexPacks IndexPack[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @map("id")
+  userId    String?  @map("user_id")
+  data      Json     @map("data")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model GoogleTokenSet {
+  userId            String   @id @map("user_id")
+  accessCiphertext  String   @map("access_ciphertext")
+  accessIv          String   @map("access_iv")
+  accessAuthTag     String   @map("access_auth_tag")
+  refreshCiphertext String?  @map("refresh_ciphertext")
+  refreshIv         String?  @map("refresh_iv")
+  refreshAuthTag    String?  @map("refresh_auth_tag")
+  keyVersion        String   @map("key_version")
+  expiresAt         DateTime @map("expires_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@map("google_token_sets")
+}
+
+model TimelineEntry {
+  id              String           @id @default(uuid()) @map("id")
+  userId          String           @map("user_id")
+  title           String           @map("title")
+  status          String           @map("status")
+  driveWriteStatus String          @map("drive_write_status")
+  driveFileId     String?          @map("drive_file_id")
+  summaryMarkdown String?          @map("summary_markdown")
+  keyPoints       String[]         @map("key_points")
+  metadataRefs    String[]         @map("metadata_refs")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  user            User             @relation(fields: [userId], references: [id])
+  sourceRefs      EntrySourceRef[]
+  derivedArtifacts DerivedArtifact[]
+
+  @@map("timeline_entries")
+}
+
+model EntrySourceRef {
+  id         String        @id @default(uuid()) @map("id")
+  entryId    String        @map("entry_id")
+  sourceType String        @map("source_type")
+  sourceId   String        @map("source_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  entry      TimelineEntry @relation(fields: [entryId], references: [id])
+
+  @@map("entry_source_refs")
+}
+
+model DerivedArtifact {
+  id        String        @id @default(uuid()) @map("id")
+  entryId   String        @map("entry_id")
+  kind      String        @map("kind")
+  createdAt DateTime      @default(now()) @map("created_at")
+  entry     TimelineEntry @relation(fields: [entryId], references: [id])
+
+  @@map("derived_artifacts")
+}
+
+model PromptVersion {
+  id             String   @id @default(uuid()) @map("id")
+  key            String   @map("key")
+  version        Int      @map("version")
+  content        String   @map("content")
+  active         Boolean  @default(false) @map("active")
+  userSelectable Boolean  @default(true) @map("user_selectable")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("prompt_versions")
+}
+
+model IndexPack {
+  id         String   @id @default(uuid()) @map("id")
+  userId     String   @map("user_id")
+  driveFileId String? @map("drive_file_id")
+  status     String   @map("status")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@map("index_packs")
+}
