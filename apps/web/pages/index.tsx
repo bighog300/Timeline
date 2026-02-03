@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React from "react";
 import { Timeline, TimelineEntry, ZoomControls } from "../components/Timeline";
 
 type EntryStatus = "processing" | "ready" | "error";
@@ -40,21 +40,21 @@ const requestJson = async (path: string, options: RequestInit = {}) => {
 };
 
 export default function HomePage() {
-  const [zoom, setZoom] = useState<"day" | "week" | "month">("week");
-  const [entries, setEntries] = useState<EntryRecord[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [authStatus, setAuthStatus] = useState<"unknown" | "connected" | "disconnected">(
+  const [zoom, setZoom] = React.useState<"day" | "week" | "month">("week");
+  const [entries, setEntries] = React.useState<EntryRecord[]>([]);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const [authStatus, setAuthStatus] = React.useState<"unknown" | "connected" | "disconnected">(
     "unknown"
   );
-  const [reconnectRequired, setReconnectRequired] = useState(false);
-  const [titleInput, setTitleInput] = useState("");
-  const [searchState, setSearchState] = useState<SearchResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [reconnectRequired, setReconnectRequired] = React.useState(false);
+  const [titleInput, setTitleInput] = React.useState("");
+  const [searchState, setSearchState] = React.useState<SearchResult | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const selectedEntry = entries.find((entry) => entry.id === selectedId) ?? null;
 
-  const timelineEntries = useMemo<TimelineEntry[]>(
+  const timelineEntries = React.useMemo<TimelineEntry[]>(
     () =>
       entries.map((entry) => ({
         id: entry.id,
@@ -67,7 +67,7 @@ export default function HomePage() {
     [entries]
   );
 
-  const loadEntries = useCallback(async () => {
+  const loadEntries = React.useCallback(async () => {
     setIsLoading(true);
     setStatusMessage(null);
     const { response, data } = await requestJson("/entries");
@@ -83,7 +83,7 @@ export default function HomePage() {
     setIsLoading(false);
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     void loadEntries();
   }, [loadEntries]);
 
@@ -211,7 +211,7 @@ export default function HomePage() {
             type="text"
             placeholder="Entry title"
             value={titleInput}
-            onChange={(event) => setTitleInput(event.target.value)}
+            onChange={(event: { target: { value: string } }) => setTitleInput(event.target.value)}
             disabled={authStatus !== "connected"}
           />
           <button type="submit" disabled={authStatus !== "connected"}>
