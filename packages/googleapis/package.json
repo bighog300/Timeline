@@ -1,0 +1,7 @@
+{
+  "name": "googleapis",
+  "version": "140.0.1",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true
+}
