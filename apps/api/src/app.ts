@@ -120,11 +120,11 @@ export const createApp = (options: Partial<AppContext> = {}) => {
     return file.id;
   };
 
-  app.get("/health", (_req, res) => {
+  app.get("/health", (_req: express.Request, res: express.Response) => {
     res.json({ ok: true });
   });
 
-  app.get("/auth/google/start", (_req, res) => {
+  app.get("/auth/google/start", (_req: express.Request, res: express.Response) => {
     res.json({ url: "https://accounts.google.com/o/oauth2/v2/auth" });
   });
 
@@ -191,17 +191,17 @@ export const createApp = (options: Partial<AppContext> = {}) => {
     })
   );
 
-  app.post("/auth/logout", (req, res) => {
+  app.post("/auth/logout", (req: express.Request, res: express.Response) => {
     req.session.destroy(() => {
       res.json({ ok: true });
     });
   });
 
-  app.get("/search/gmail", requireSession, (_req, res) => {
+  app.get("/search/gmail", requireSession, (_req: express.Request, res: express.Response) => {
     res.json({ results: [], source: "gmail", metadataOnly: true });
   });
 
-  app.get("/search/drive", requireSession, (_req, res) => {
+  app.get("/search/drive", requireSession, (_req: express.Request, res: express.Response) => {
     res.json({ results: [], source: "drive", metadataOnly: true });
   });
 
@@ -413,7 +413,11 @@ export const createApp = (options: Partial<AppContext> = {}) => {
     })
   );
 
-  app.post("/admin/playground", requireSession, requireAdmin, (_req, res) => {
+  app.post(
+    "/admin/playground",
+    requireSession,
+    requireAdmin,
+    (_req: express.Request, res: express.Response) => {
     res.json({ output: "Playground output", usage: { promptTokens: 0, completionTokens: 0 } });
   });
 

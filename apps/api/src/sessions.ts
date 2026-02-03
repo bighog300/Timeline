@@ -21,7 +21,7 @@ export const createSessionStore = (prisma: PrismaClient) => {
     get(sid: string, callback: (err: Error | null, session?: session.SessionData | null) => void) {
       prisma.session
         .findUnique({ where: { id: sid } })
-        .then((record) => {
+        .then((record: any) => {
           if (!record) {
             callback(null, null);
             return;
@@ -31,7 +31,7 @@ export const createSessionStore = (prisma: PrismaClient) => {
           }
           callback(null, record.data as session.SessionData);
         })
-        .catch((error) => callback(error));
+        .catch((error: unknown) => callback(error as Error));
     }
 
     set(sid: string, sessionData: session.SessionData, callback?: (err?: Error | null) => void) {
@@ -53,14 +53,14 @@ export const createSessionStore = (prisma: PrismaClient) => {
           }
         })
         .then(() => callback?.(null))
-        .catch((error) => callback?.(error));
+        .catch((error: unknown) => callback?.(error as Error));
     }
 
     destroy(sid: string, callback?: (err?: Error | null) => void) {
       prisma.session
         .delete({ where: { id: sid } })
         .then(() => callback?.(null))
-        .catch((error) => callback?.(error));
+        .catch((error: unknown) => callback?.(error as Error));
     }
 
     touch(sid: string, sessionData: session.SessionData, callback?: () => void) {

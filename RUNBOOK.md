@@ -29,3 +29,7 @@
 - If you are behind a corporate registry, ensure your auth token is valid or temporarily unset the proxy variables.
 - If a global npmrc is forcing a private registry, override with:
   - `npm --registry=https://registry.npmjs.org/ install`
+- If access to specific packages is blocked (403 on a public package), use the local workspace fallbacks:
+  - `packages/prisma-client` provides a minimal `@prisma/client`.
+  - `packages/googleapis` provides a minimal `googleapis`.
+  - Keep the workspace package versions aligned with the versions in `apps/api/package.json`.
