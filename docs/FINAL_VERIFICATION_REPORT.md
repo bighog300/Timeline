@@ -7,8 +7,22 @@
 | `npm install` | ✅ Pass | Warning: `npm warn Unknown env config "http-proxy"` appeared in output. |
 | `npm test -w apps/api` | ✅ Pass | Acceptance tests completed successfully. |
 | `npm run build -w apps/api` | ✅ Pass | TypeScript build completed successfully. |
+| `npm run build -w apps/web` | ✅ Pass | Uses `NEXT_IGNORE_INCORRECT_LOCKFILE=1` to skip Next.js lockfile patching without network access. |
 
 > **Install remediation note:** `npm install` previously failed with 403s for public packages (`@prisma/client`, `googleapis`, `pg`, `prisma`). Remediation was to remove unused deps and provide local workspace fallbacks for `@prisma/client` and `googleapis` (see RUNBOOK). The final install completed successfully.
+
+## Dev Server Smoke Check
+
+### Commands
+| Command | Result | Notes |
+| --- | --- | --- |
+| `npm run dev -w apps/api` | ✅ Pass | `SHIM_ALLOW=1` set in the script to use local Prisma/Google API shims for dev. |
+| `npm run dev -w apps/web` | ✅ Pass | `NEXT_IGNORE_INCORRECT_LOCKFILE=1` set in the script to avoid lockfile patching without network access. |
+
+### Web Smoke Checklist
+- ✅ Web app loads at `http://localhost:3000`.
+- ✅ API requests route through Next.js rewrites (`/api/entries` returns a 401 JSON response from the API, no CORS errors).
+- ✅ Reconnect-required handling verified by simulating a `401 { "error": "reconnect_required" }` response for `/api/entries/:id/run`: reconnect CTA banner displays and summary content remains unchanged (no partial processing UI).
 
 ## Compliance Checklist (Authoritative Constraints)
 
