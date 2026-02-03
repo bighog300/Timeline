@@ -1,3 +1,9 @@
+if (process.env.NODE_ENV !== "test" && process.env.SHIM_ALLOW !== "1") {
+  throw new Error(
+    "@prisma/client shim is test-only. Set SHIM_ALLOW=1 only for restricted dev environments."
+  );
+}
+
 const crypto = require("crypto");
 
 const sortByDateDesc = (items, key) =>
@@ -173,4 +179,6 @@ class PrismaClient {
   async $disconnect() {}
 }
 
-module.exports = { PrismaClient };
+PrismaClient.__isShim = true;
+
+module.exports = { PrismaClient, __isShim: true };

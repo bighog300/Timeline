@@ -43,6 +43,23 @@ const handleAsync =
   };
 
 export const createApp = (options: Partial<AppContext> = {}) => {
+  if (process.env.NODE_ENV === "production") {
+    const prismaPackage = require("@prisma/client") as { __isShim?: boolean };
+    const googleapisPackage = require("googleapis") as { __isShim?: boolean };
+
+    if (process.env.DRIVE_ADAPTER !== "google") {
+      throw new Error("Production requires DRIVE_ADAPTER=google (stub adapter is not allowed).");
+    }
+
+    if (!process.env.DATABASE_URL) {
+      throw new Error("Production requires DATABASE_URL to connect to the real database.");
+    }
+
+    if (prismaPackage.__isShim || googleapisPackage.__isShim) {
+      throw new Error("Shim packages are not allowed in production.");
+    }
+  }
+
   const app = express();
   const driveClient = options.driveClient ?? createDriveClient();
   const prisma = options.prisma ?? getPrismaClient();
@@ -270,7 +287,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
 
       const token = await prisma.googleTokenSet.findUnique({ where: { userId: sessionData.userId } });
       if (!token) {
-        sendError(res, 401, "reconnect_required", "Re-authentication required.");
+        res.status(401).json({ error: "reconnect_required" });
         return;
       }
 

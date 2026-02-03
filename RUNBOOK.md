@@ -33,3 +33,4 @@
   - `packages/prisma-client` provides a minimal `@prisma/client`.
   - `packages/googleapis` provides a minimal `googleapis`.
   - Keep the workspace package versions aligned with the versions in `apps/api/package.json`.
+  - **Escape hatch:** set `SHIM_ALLOW=1` only in restricted dev environments to enable the shims (never in production).
