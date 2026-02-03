@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "node tests/acceptance.test.js"
+    "test": "node -r ts-node/register tests/acceptance.test.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
