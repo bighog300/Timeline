@@ -1,3 +1,9 @@
+if (process.env.NODE_ENV !== "test" && process.env.SHIM_ALLOW !== "1") {
+  throw new Error(
+    "googleapis shim is test-only. Set SHIM_ALLOW=1 only for restricted dev environments."
+  );
+}
+
 class JwtStub {
   constructor(options) {
     this.options = options;
@@ -20,4 +26,4 @@ const google = {
   })
 };
 
-module.exports = { google };
+module.exports = { google, __isShim: true };

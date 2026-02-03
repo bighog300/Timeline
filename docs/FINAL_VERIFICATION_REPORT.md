@@ -23,13 +23,14 @@
 
 ### c) Explicit-only fetching (search endpoints metadata-only; content fetched only inside entry run)
 - Search endpoints return `metadataOnly: true` for Gmail and Drive results. (apps/api/src/app.ts:200-206)
-- Acceptance test asserts `metadataOnly === true` for `/search/gmail`. (apps/api/tests/acceptance.test.js:66-69)
+- Acceptance test asserts `metadataOnly === true` for `/search/gmail` and `/search/drive`. (apps/api/tests/acceptance.test.js:67-73)
 - Entry run requires a session, validates token presence, and then produces derived summary + refs (no raw content persistence). (apps/api/src/app.ts:260-318)
+- Missing tokens return `401 {"error":"reconnect_required"}` per spec, with no processing or Drive writes. (apps/api/src/app.ts:271-276; apps/api/tests/acceptance.test.js:98-108)
 
 ### d) Drive overwrite-by-fileId
 - Drive writes update existing files when `driveFileId` exists; otherwise creates a new file. (apps/api/src/app.ts:92-121)
 - Drive adapter uses `fileId` for updates. (apps/api/src/drive.ts:98-108, 203-227)
-- Acceptance test asserts overwrite behavior (same `driveFileId`, update count increments). (apps/api/tests/acceptance.test.js:77-87)
+- Acceptance test asserts overwrite behavior (same `driveFileId`, update count increments). (apps/api/tests/acceptance.test.js:84-94)
 
 ### e) Session auth: signed cookie + DB store; no JWT
 - Express session middleware configured with secret, cookie settings, and Prisma-backed store. (apps/api/src/app.ts:57-71)
@@ -38,11 +39,15 @@
 ### f) Admin allowlist enforced server-side; admin endpoints cannot access user data
 - `requireAdmin` enforces `ADMIN_EMAILS` allowlist and blocks non-admins. (apps/api/src/app.ts:50-90)
 - Admin endpoints are gated by `requireAdmin` and do not expose user entry data. (apps/api/src/app.ts:359-432)
-- Acceptance test verifies admin endpoint access is denied for non-admin user and allowed for admin. (apps/api/tests/acceptance.test.js:98-103)
+- Acceptance test verifies admin endpoint access is denied for non-admin user and allowed for admin. (apps/api/tests/acceptance.test.js:110-115)
 
 ### g) Index pack endpoints exist and are explicit-action only
 - Index pack CRUD + run endpoints exist and are session-scoped. (apps/api/src/app.ts:434-531)
 - Rehydrate endpoint requires explicit `entryIds` selection (enforced). (apps/api/src/app.ts:533-548)
+
+### h) Shim packages are test-only and blocked in production
+- Shim packages (`packages/googleapis`, `packages/prisma-client`) now throw unless `NODE_ENV === "test"` or `SHIM_ALLOW=1`. (packages/googleapis/index.js:1-26; packages/prisma-client/index.js:1-14)
+- Production startup rejects shim packages and requires real adapters/configuration. (apps/api/src/app.ts:34-55)
 
 ## Privacy Grep Checks (Required)
 

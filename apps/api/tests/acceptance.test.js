@@ -7,6 +7,7 @@ process.env.KEY_VERSION = "v1";
 process.env.SESSION_SECRET = "test-secret";
 process.env.ADMIN_EMAILS = "admin@example.com";
 process.env.DRIVE_ADAPTER = "stub";
+process.env.NODE_ENV = "test";
 
 const { createApp } = require("../src/app");
 const { createDriveStub } = require("../src/drive");
@@ -67,6 +68,10 @@ const login = async (baseUrl, email) => {
     const metadataBody = await metadataRes.response.json();
     assert.strictEqual(metadataBody.metadataOnly, true);
 
+    const driveMetadataRes = await request(baseUrl, "/search/drive", { cookie: userCookie });
+    const driveMetadataBody = await driveMetadataRes.response.json();
+    assert.strictEqual(driveMetadataBody.metadataOnly, true);
+
     const entryRes = await request(baseUrl, "/entries", {
       method: "POST",
       cookie: userCookie,
@@ -79,6 +84,9 @@ const login = async (baseUrl, email) => {
     const createCountAfterFirst = context.driveClient.stats.createCount;
     const updateCountAfterFirst = context.driveClient.stats.updateCount;
 
+    assert.strictEqual(runOneBody.status, "ready");
+    assert.strictEqual(runOneBody.driveWriteStatus, "ok");
+
     const runTwo = await request(baseUrl, `/entries/${entry.id}/run`, { method: "POST", cookie: userCookie });
     const runTwoBody = await runTwo.response.json();
 
@@ -87,13 +95,19 @@ const login = async (baseUrl, email) => {
     assert.strictEqual(context.driveClient.stats.updateCount, updateCountAfterFirst + 1);
 
     await prisma.googleTokenSet.delete({ where: { userId: runTwoBody.userId } });
+    const driveCountsBeforeMissingToken = {
+      create: context.driveClient.stats.createCount,
+      update: context.driveClient.stats.updateCount
+    };
     const missingTokenRun = await request(baseUrl, `/entries/${entry.id}/run`, {
       method: "POST",
       cookie: userCookie
     });
     const missingTokenBody = await missingTokenRun.response.json();
     assert.strictEqual(missingTokenRun.response.status, 401);
-    assert.strictEqual(missingTokenBody.error.code, "reconnect_required");
+    assert.strictEqual(missingTokenBody.error, "reconnect_required");
+    assert.strictEqual(context.driveClient.stats.createCount, driveCountsBeforeMissingToken.create);
+    assert.strictEqual(context.driveClient.stats.updateCount, driveCountsBeforeMissingToken.update);
 
     const adminDenied = await request(baseUrl, "/admin/prompts", { cookie: userCookie });
     assert.strictEqual(adminDenied.response.status, 403);
