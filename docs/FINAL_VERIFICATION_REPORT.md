@@ -184,3 +184,19 @@ apps/api/prisma/schema.prisma:78:  @@map("entry_source_refs")
 ```
 
 **Interpretation:** Matches relate to request body handling, Drive API request bodies, and `EntrySourceRef` metadata fields. No raw content storage fields (e.g., `raw`, `html`, `extracted`) appear in the Prisma schema.
+
+## Definition of Done Verification (PRD)
+
+| Requirement | Verification | Evidence |
+| --- | --- | --- |
+| Connect Google | OAuth start and callback endpoints return Google auth URL and create session/token records. | `GET /auth/google/start` and `/auth/google/callback` handlers in API. |
+| Metadata search | Gmail/Drive search endpoints return metadata-only results. | `/search/gmail` and `/search/drive` handlers return `metadataOnly: true`. |
+| Create entry | Entry creation persists a new timeline entry with pending status. | `POST /entries` handler creates a timeline entry. |
+| Run summary | Summary run updates entry status and derived fields, then logs metrics-only event. | `POST /entries/:id/run` handler updates summary/key points/metadata refs and calls `logEvent`. |
+| Timeline display | Web UI renders timeline with entries and allows selecting an entry drawer. | `apps/web/pages/index.tsx` timeline state and `Timeline` component usage. |
+| Drive file created | Summary run writes markdown to Drive and stores `driveFileId` + status. | `writeEntryToDrive` and `/entries/:id/run` drive write flow. |
+| Rerun overwrites same fileId | Drive update uses existing `driveFileId` and preserves it. | `writeEntryToDrive` update path + acceptance test assertions. |
+| Admin prompt management | Admin prompt list/create/activate endpoints gated by allowlist. | `/admin/prompts` handlers + `requireAdmin` middleware. |
+
+### Verification Notes
+- Evidence gathered via code inspection and existing acceptance coverage (no new tests executed in this verification pass).
