@@ -1,0 +1,15 @@
+# Environment
+
+## Required
+- NODE_ENV
+- PORT (api)
+- WEB_PORT (web)
+- SESSION_SECRET
+- OAUTH_GOOGLE_CLIENT_ID
+- OAUTH_GOOGLE_CLIENT_SECRET
+- OAUTH_GOOGLE_REDIRECT_URI
+- TOKEN_ENCRYPTION_KEYRING (JSON array of {version, key} base64)
+- ADMIN_EMAILS (comma-separated)
+- OPENAI_API_KEY
+- DATABASE_URL (SQLite file path)
+

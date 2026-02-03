@@ -1,0 +1,22 @@
+{
+  "name": "timeline-app",
+  "services": [
+    "apps/web",
+    "apps/api"
+  ],
+  "packages": [
+    "packages/shared"
+  ],
+  "docs": [
+    "PRD.md",
+    "ARCHITECTURE.md",
+    "STACK.md",
+    "API_SPEC.md",
+    "DATA_MODEL.md",
+    "LIMITS_AND_PRIVACY.md",
+    "ENVIRONMENT.md",
+    "RUNBOOK.md",
+    "CODE_AGENT_INSTRUCTIONS.md",
+    "ACCEPTANCE_TESTS.md"
+  ]
+}
