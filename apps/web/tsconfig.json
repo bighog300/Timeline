@@ -5,7 +5,25 @@
     "jsx": "preserve",
     "strict": true,
     "noEmit": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "incremental": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
-  "include": ["next-env.d.ts", "pages", "components"]
+  "include": [
+    "next-env.d.ts",
+    "pages",
+    "components"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
