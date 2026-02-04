@@ -28,7 +28,10 @@ const envSchema = z.object({
     .default(5 * 1024 * 1024),
   CHUNK_MAX_CHARS: z.coerce.number().int().positive().default(1500),
   CHUNK_OVERLAP_CHARS: z.coerce.number().int().nonnegative().default(200),
-  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.string().min(1),
+  EMBEDDING_MODEL: z.string().min(1).default("text-embedding-3-small"),
+  EMBED_MAX_CHUNKS_PER_RUN: z.coerce.number().int().positive().default(50),
+  EMBED_MAX_TOKENS_PER_RUN: z.coerce.number().int().positive().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

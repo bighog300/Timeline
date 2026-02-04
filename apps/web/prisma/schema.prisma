@@ -17,6 +17,7 @@ model User {
   driveConnections DriveConnection[]
   driveFileRefs    DriveFileRef[]
   derivedArtifacts DerivedArtifact[]
+  chunkEmbeddings  ChunkEmbedding[]
   indexState       IndexState?
 }
 
@@ -85,6 +86,7 @@ model DriveFileRef {
   updatedAt        DateTime          @updatedAt
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   derivedArtifacts DerivedArtifact[]
+  chunkEmbeddings  ChunkEmbedding[]
 
   @@unique([userId, driveFileId])
   @@index([userId])
@@ -112,7 +114,28 @@ model DerivedArtifact {
   updatedAt      DateTime     @updatedAt
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   driveFileRef   DriveFileRef @relation(fields: [driveFileRefId], references: [id], onDelete: Cascade)
+  chunkEmbeddings ChunkEmbedding[]
 
   @@unique([driveFileRefId, type, contentHash])
   @@index([userId])
+}
+
+model ChunkEmbedding {
+  id             String   @id @default(uuid())
+  userId         String
+  driveFileRefId String
+  artifactId     String
+  chunkIndex     Int
+  chunkText      String
+  contentHash    String
+  embedding      Unsupported("vector(1536)")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  driveFileRef   DriveFileRef   @relation(fields: [driveFileRefId], references: [id], onDelete: Cascade)
+  artifact       DerivedArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@unique([artifactId, chunkIndex, contentHash])
+  @@index([userId])
+  @@index([driveFileRefId])
 }

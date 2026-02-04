@@ -7,6 +7,7 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
 - Copy `.env.example` to `.env` and set required values.
   - Set `API_SERVER_ORIGIN=http://localhost:3001` for the web rewrite in dev.
   - Optional: set `NEXT_PUBLIC_API_BASE` if the web app should call a non-default API base (defaults to `/api`).
+- Ensure Postgres has the pgvector extension available (`CREATE EXTENSION IF NOT EXISTS vector;`), or run migrations on a database that supports it.
 - `pnpm db:generate`
 - `pnpm db:migrate`
 - `pnpm dev:api`
@@ -40,3 +41,10 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
 ## Restricted environments
 - `SHIM_ALLOW` is a dev/test-only escape hatch.
 - Production blocks shims and stubs.
+
+## Embeddings (Phase 6)
+- Required env vars for embeddings:
+  - `OPENAI_API_KEY`
+  - `EMBEDDING_MODEL` (defaults to `text-embedding-3-small`)
+  - `EMBED_MAX_CHUNKS_PER_RUN` (defaults to `50`)
+- If your local Postgres instance does not include pgvector, install it before running migrations.
