@@ -16,6 +16,8 @@
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
     "build:web": "pnpm --filter ./apps/web build",
+    "vercel:install": "node -v && pnpm -v && pwd && pnpm config get registry && pnpm install",
+    "vercel:build": "node -v && pnpm -v && pwd && pnpm config get registry && pnpm --filter ./apps/web build",
     "lint": "pnpm -r --if-present lint"
   }
 }
