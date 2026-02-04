@@ -46,15 +46,16 @@
 - If Vercel `pnpm install` fails with `ERR_INVALID_THIS`, ensure pnpm v9 is pinned via the root `packageManager` field.
 - Vercel scripts explicitly enable Corepack, activate pnpm v9, and sanity-check `@timeline/shared` resolution for the web workspace before building.
 - Recommended Vercel project settings for the web app:
-  - **Root Directory:** `apps/web`
-  - **Install Command:** `pnpm install`
-  - **Build Command:** `pnpm run build`
+  - **Root Directory:** `.` (repo root)
+  - **Install Command:** `pnpm run vercel:install`
+  - **Build Command:** `pnpm run vercel:build`
 
 ### 1) Deployment model (important)
-- Production deployments MUST install and build **from service directories**, not from the repo root.
-- Do NOT deploy using root workspaces.
+- For Vercel, use the root scripts above so the workspace install/build runs with explicit filters.
+- For other platforms, production deployments MUST install and build **from service directories**, not from the repo root.
+- Do NOT deploy using root workspaces outside of the Vercel flow.
 - Rationale: the repo contains workspace shim packages (`@prisma/client`, `googleapis`) for restricted dev/test environments that are intentionally blocked in production.
-- Deploy `apps/api` and `apps/web` independently.
+- Deploy `apps/api` and `apps/web` independently when not on Vercel.
 - Each service uses its own `package.json` and installs real dependencies from npm.
 
 ### 2) API service deployment steps
