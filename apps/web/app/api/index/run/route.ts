@@ -83,6 +83,12 @@ export const POST = async () => {
         ? existing.lastError
         : null
       : `Unsupported mime type: ${file.mimeType ?? "unknown"}`;
+    const contentStatus = supported
+      ? existing?.contentStatus ?? "PENDING"
+      : "SKIPPED";
+    const contentLastError = supported
+      ? existing?.contentLastError ?? null
+      : `Unsupported mime type: ${file.mimeType ?? "unknown"}`;
 
     lastProcessedId = file.id;
     newOrUpdated += 1;
@@ -102,6 +108,8 @@ export const POST = async () => {
         checksum: file.md5Checksum ?? null,
         status,
         lastError,
+        contentStatus,
+        contentLastError,
       },
       create: {
         userId: user.id,
@@ -113,6 +121,8 @@ export const POST = async () => {
         checksum: file.md5Checksum ?? null,
         status,
         lastError,
+        contentStatus,
+        contentLastError,
       },
     });
   });
