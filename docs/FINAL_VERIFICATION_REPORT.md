@@ -1,5 +1,8 @@
 # Final Verification Report
 
+**Version Freeze:** This report corresponds to release tag `v0.1.0-mvp`.
+**Post-tag policy:** Subsequent changes should use patch tags (e.g., `v0.1.1-mvp`).
+
 ## Test Command Summary
 
 | Command | Result | Notes |

@@ -1,5 +1,8 @@
 # Simulation Verification Report
 
+**Version Freeze:** This report corresponds to release tag `v0.1.0-mvp`.
+**Post-tag policy:** Subsequent changes should use patch tags (e.g., `v0.1.1-mvp`).
+
 ## Environment
 - Mode: **Stub/simulated** (GOOGLE_API_STUB=1, OPENAI_STUB=1, DRIVE_ADAPTER=stub, NODE_ENV=development).
 - Database: Prisma shim in-memory (SHIM_ALLOW=1 via `npm run dev -w apps/api`).
