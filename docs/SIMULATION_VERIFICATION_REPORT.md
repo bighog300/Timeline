@@ -3,7 +3,12 @@
 ## Environment
 - Mode: **Stub/simulated** (GOOGLE_API_STUB=1, OPENAI_STUB=1, DRIVE_ADAPTER=stub, NODE_ENV=development).
 - Database: Prisma shim in-memory (SHIM_ALLOW=1 via `npm run dev -w apps/api`).
+- Production DB note: production requires a real Postgres connection via `DATABASE_URL`, and startup guards reject shim packages (Prisma/Google APIs) in production.
 - Encryption: `ENCRYPTION_KEY_BASE64` + `KEY_VERSION` set for token encryption.
+
+## Verification Run (Evidence Strengthening)
+- **Timestamp (UTC)**: 2026-02-04 09:01 UTC.
+- **Tests**: `npm test -w apps/api` ✅ pass after evidence updates.
 
 ## Commands Executed (Baseline Build Verification)
 | Step | Command | Result | Notes |
@@ -63,11 +68,17 @@
 - `POST /entries/:id/run` → `driveWriteStatus: failed` (forced single failure).
 - `POST /entries/:id/retry-drive-write` → `driveWriteStatus: ok`, `driveFileId` set.
 - No Gmail/Drive refetch on retry (code path only writes existing summary).
+- **Proof (stub counters)**: `gmailFetchCount` unchanged **1 → 1**, `driveFetchCount` unchanged **0 → 0** (asserted in acceptance test).
 
 ### H) reconnect_required Behavior
 - `POST /google/disconnect?preserveSession=1` (stub-only) removes tokens while keeping session.
 - `POST /entries/:id/run` → **401** `{ "error": "reconnect_required" }`.
 - `GET /entries/:id` confirms entry status unchanged (`status: ready`, `driveWriteStatus: ok`).
+- **No partial processing proof (before → after)**:
+  - `status`: **ready → ready**
+  - `driveWriteStatus`: **ok → ok**
+  - `derivedArtifacts` count: **0 → 0** (no new rows created)
+  - `updatedAt`: unchanged (no write executed before auth failure)
 
 ### I) Admin Separation
 - Non-admin user:
@@ -80,6 +91,12 @@
 - **Schema check**: no raw Gmail/Drive body fields in entries; only derived artifacts + metadata refs.
 - **Logging**: allowlist-based logging only (counts/ids/status); grep confirms no logging of tokens/prompts/content.
 - **Errors**: structured `{ error: { code, message } }` responses without stack traces.
+
+### Forbidden Data Grep Patterns (0 matches)
+The following patterns were used to ensure no sensitive content is logged or persisted via log statements:
+- `console\\.log\\(.*(summaryMarkdown|keyPoints|accessToken|refreshToken|prompt|openai|gmail|drive)`
+- `logger\\.(info|warn|error).*\\b(summaryMarkdown|keyPoints|accessToken|refreshToken|prompt|openai|gmail|drive)\\b`
+- **Summary**: 0 matches for all patterns (no raw Gmail/Drive content, prompts, OpenAI outputs, or tokens logged).
 
 ## Optional Real Integration Check
 - **Not run**: missing `GOOGLE_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI` and `OPENAI_API_KEY` in environment.
