@@ -43,6 +43,10 @@ jobs:
         run: pnpm preflight
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Vercel install
+        run: pnpm run vercel:install
+      - name: Vercel build
+        run: pnpm run vercel:build
       - name: Build
         run: pnpm build
       - name: Test

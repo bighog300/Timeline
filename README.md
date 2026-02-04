@@ -6,6 +6,7 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
 - `pnpm install`
 - Copy `.env.example` to `.env` and set required values.
   - Set `API_SERVER_ORIGIN=http://localhost:3001` for the web rewrite in dev.
+  - Optional: set `NEXT_PUBLIC_API_BASE` if the web app should call a non-default API base (defaults to `/api`).
 - `pnpm db:generate`
 - `pnpm db:migrate`
 - `pnpm dev:api`

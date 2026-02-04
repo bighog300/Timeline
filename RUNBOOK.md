@@ -102,7 +102,7 @@ API (required):
 
 Web (as applicable):
 - `NEXT_PUBLIC_API_BASE` — API base URL for the web app (defaults to `/api`).
-- `NEXT_PUBLIC_APP_BASE_URL` — public base URL for the web app.
+  - This is the only public env var currently consumed by the web UI.
 
 Do NOT set stub flags in production:
 - `GOOGLE_API_STUB`
