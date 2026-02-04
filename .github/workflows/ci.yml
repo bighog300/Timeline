@@ -9,6 +9,11 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: development
+      SESSION_SECRET: ci-session-secret-32-chars-minimum
+      ENCRYPTION_KEY_BASE64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      KEY_VERSION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
