@@ -1,19 +1,28 @@
 import crypto from "crypto";
 import express from "express";
 import session from "express-session";
+import cookieParser from "cookie-parser";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { decryptPayload, encryptPayload, getActiveKeyVersion } from "./crypto";
 import { createDriveClient } from "./drive";
 import type { DriveClient } from "./drive";
 import { getPrismaClient } from "./db";
+import { validateRequiredEnv } from "./env";
 import { sendError } from "./errors";
 import { createGoogleApi } from "./googleApi";
 import type { GoogleApi, GoogleApiClient } from "./googleApi";
 import { logEvent } from "./logger";
 import { createOpenAIClient } from "./openai";
 import type { OpenAIClient } from "./openai";
-import { cleanupExpiredSessions, createSessionStore, getSessionSecret, getSessionTtlMs } from "./sessions";
+import {
+  cleanupExpiredSessions,
+  createSessionStore,
+  getSessionCookieName,
+  getSessionCookieSameSite,
+  getSessionSecret,
+  getSessionTtlMs
+} from "./sessions";
 import type {
   EntryRecord,
   IndexPackRecord,
@@ -87,28 +96,14 @@ const MAX_SOURCE_COUNT = Number(process.env.MAX_SOURCE_COUNT ?? "20");
 const MAX_TOTAL_CHARS = Number(process.env.MAX_TOTAL_CHARS ?? "60000");
 
 export const createApp = (options: Partial<AppContext> = {}) => {
+  validateRequiredEnv();
+
   if (process.env.NODE_ENV === "production") {
     const prismaPackage = require("@prisma/client") as { __isShim?: boolean };
     const googleapisPackage = require("googleapis") as { __isShim?: boolean };
 
     if (process.env.DRIVE_ADAPTER !== "google") {
       throw new Error("Production requires DRIVE_ADAPTER=google (stub adapter is not allowed).");
-    }
-
-    if (
-      !process.env.GOOGLE_OAUTH_CLIENT_ID ||
-      !process.env.GOOGLE_OAUTH_CLIENT_SECRET ||
-      !process.env.GOOGLE_OAUTH_REDIRECT_URI
-    ) {
-      throw new Error("Production requires Google OAuth credentials.");
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("Production requires OPENAI_API_KEY.");
-    }
-
-    if (!process.env.DATABASE_URL) {
-      throw new Error("Production requires DATABASE_URL to connect to the real database.");
     }
 
     if (prismaPackage.__isShim || googleapisPackage.__isShim) {
@@ -129,16 +124,70 @@ export const createApp = (options: Partial<AppContext> = {}) => {
       .filter(Boolean)
   );
 
+  const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const csrfCookieName = process.env.CSRF_COOKIE_NAME?.trim() || "timeline.csrf";
+  const csrfHeaderName = "x-csrf-token";
+  const sessionSameSite = getSessionCookieSameSite();
+
+  if (allowedOrigins.length > 0 && sessionSameSite !== "none") {
+    throw new Error("SESSION_COOKIE_SAMESITE must be 'none' when CORS_ALLOWED_ORIGINS is set.");
+  }
+
+  app.use(cookieParser());
   app.use(express.json());
+  if (allowedOrigins.length > 0) {
+    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const origin = req.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader("Access-Control-Allow-Headers", `Content-Type, ${csrfHeaderName}`);
+        res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+        res.setHeader("Vary", "Origin");
+      }
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+      next();
+    });
+
+    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const existingToken = req.cookies?.[csrfCookieName];
+      const token = existingToken ?? crypto.randomUUID();
+      if (!existingToken) {
+        res.cookie(csrfCookieName, token, {
+          httpOnly: false,
+          sameSite: "none",
+          secure: process.env.NODE_ENV === "production",
+          path: "/"
+        });
+      }
+      if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+        next();
+        return;
+      }
+      const headerToken = req.get(csrfHeaderName);
+      if (!headerToken || headerToken !== token) {
+        sendError(res, 403, "csrf_failed", "CSRF token missing or invalid.");
+        return;
+      }
+      next();
+    });
+  }
   app.use(
     session({
+      name: getSessionCookieName(),
       secret: getSessionSecret(),
       resave: false,
       saveUninitialized: false,
       store: createSessionStore(prisma),
       cookie: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: sessionSameSite,
         secure: process.env.NODE_ENV === "production",
         path: "/",
         maxAge: getSessionTtlMs()
@@ -395,7 +444,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
       const sessionData = ensureSessionData(req) as SessionData;
       const authClient = await getAuthorizedClient(sessionData.userId);
       if (!authClient) {
-        res.status(401).json({ error: "reconnect_required" });
+        sendError(res, 401, "reconnect_required", "Reconnect Google to continue.");
         return;
       }
       const query = req.query.q?.toString() ?? "";
@@ -418,7 +467,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
       const sessionData = ensureSessionData(req) as SessionData;
       const authClient = await getAuthorizedClient(sessionData.userId);
       if (!authClient) {
-        res.status(401).json({ error: "reconnect_required" });
+        sendError(res, 401, "reconnect_required", "Reconnect Google to continue.");
         return;
       }
       const query = req.query.q?.toString() ?? "";
@@ -598,7 +647,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
 
       const authClient = await getAuthorizedClient(sessionData.userId);
       if (!authClient) {
-        res.status(401).json({ error: "reconnect_required" });
+        sendError(res, 401, "reconnect_required", "Reconnect Google to continue.");
         return;
       }
 
@@ -760,7 +809,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
 
     const authClient = await getAuthorizedClient(sessionData.userId);
     if (!authClient) {
-      res.status(401).json({ error: "reconnect_required" });
+      sendError(res, 401, "reconnect_required", "Reconnect Google to continue.");
       return;
     }
 
@@ -973,7 +1022,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
 
       const authClient = await getAuthorizedClient(sessionData.userId);
       if (!authClient) {
-        res.status(401).json({ error: "reconnect_required" });
+        sendError(res, 401, "reconnect_required", "Reconnect Google to continue.");
         return;
       }
 

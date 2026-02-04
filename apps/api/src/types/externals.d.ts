@@ -8,13 +8,19 @@ declare module "express" {
       body: any;
       params: any;
       query: any;
-      headers?: Record<string, string | undefined>;
+      headers: Record<string, string | undefined>;
+      method: string;
+      cookies?: Record<string, string>;
+      get: (name: string) => string | undefined;
       sessionID?: string;
     }
     interface Response {
       json: (body: any) => Response;
       status: (code: number) => Response;
       redirect: (url: string) => Response;
+      setHeader: (name: string, value: string) => Response;
+      end: () => Response;
+      cookie: (name: string, value: string, options?: any) => Response;
     }
     type NextFunction = (err?: any) => void;
     interface Express {
@@ -40,4 +46,9 @@ declare module "express-session" {
     class Store {}
   }
   export = session;
+}
+
+declare module "cookie-parser" {
+  function cookieParser(...args: any[]): any;
+  export = cookieParser;
 }

@@ -74,6 +74,14 @@ const login = async (baseUrl, email) => {
   const { server, context, baseUrl, prisma } = await startServer();
 
   try {
+    const unauthorizedEntries = await request(baseUrl, "/entries");
+    const unauthorizedBody = await unauthorizedEntries.response.json();
+    assert.strictEqual(unauthorizedEntries.response.status, 401);
+    assert.ok(unauthorizedBody.error);
+    assert.ok(unauthorizedBody.error.code);
+    assert.ok(unauthorizedBody.error.message);
+    assert.strictEqual(unauthorizedBody.error.code, "unauthorized");
+
     const start = await request(baseUrl, "/auth/google/start");
     const badState = await request(baseUrl, "/auth/google/callback?state=bad&code=stub", {
       cookie: start.cookie
@@ -119,6 +127,15 @@ const login = async (baseUrl, email) => {
       body: { title: "First", startDate: new Date().toISOString(), tags: ["work"] }
     });
     const entry = await entryRes.response.json();
+
+    const invalidEntryRes = await request(baseUrl, "/entries", {
+      method: "POST",
+      cookie: userCookie,
+      body: { title: "Invalid" }
+    });
+    const invalidEntryBody = await invalidEntryRes.response.json();
+    assert.strictEqual(invalidEntryRes.response.status, 400);
+    assert.strictEqual(invalidEntryBody.error.code, "invalid_request");
 
     const attachRes = await request(baseUrl, `/entries/${entry.id}/sources`, {
       method: "POST",
@@ -196,7 +213,7 @@ const login = async (baseUrl, email) => {
     });
     const missingTokenBody = await missingTokenRun.response.json();
     assert.strictEqual(missingTokenRun.response.status, 401);
-    assert.strictEqual(missingTokenBody.error, "reconnect_required");
+    assert.strictEqual(missingTokenBody.error.code, "reconnect_required");
     assert.strictEqual(context.driveClient.stats.createCount, driveCountsBeforeMissingToken.create);
     assert.strictEqual(context.driveClient.stats.updateCount, driveCountsBeforeMissingToken.update);
     const entryAfterMissingToken = await prisma.timelineEntry.findUnique({

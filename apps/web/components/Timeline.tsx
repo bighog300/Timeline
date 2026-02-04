@@ -1,12 +1,13 @@
 import React from "react";
+import type { DriveWriteStatus, EntryStatus } from "@timeline/shared";
 
 export type TimelineEntry = {
   id: string;
   title: string;
   start: Date;
   end: Date;
-  status: "processing" | "ready" | "error";
-  driveWriteStatus: "ok" | "pending" | "failed";
+  status: EntryStatus;
+  driveWriteStatus: DriveWriteStatus;
 };
 
 const zoomLevels = ["day", "week", "month"] as const;

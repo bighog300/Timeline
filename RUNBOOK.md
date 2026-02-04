@@ -6,6 +6,7 @@
 
 ## Start Web
 - `npm run dev -w apps/web`
+- Ensure `API_SERVER_ORIGIN` points at the API (dev: `http://localhost:3001`).
 
 ## OAuth Issues
 - If `reconnect_required`, verify Google credentials and refresh token storage.
@@ -70,6 +71,7 @@ Example (shell-style, platform-agnostic):
 Notes:
 - Web talks to API via configured base URL or rewrites.
 - Web does not need database access.
+- For production rewrites, set `API_SERVER_ORIGIN` to the API origin (e.g., `https://api.example.com`).
 
 ### 4) Required production environment variables (summary)
 API (required):

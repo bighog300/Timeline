@@ -3,9 +3,13 @@
 Timeline App is a privacy-first, explicit-only timeline builder where Google Drive is the system of record and no raw content is persisted outside derived summaries and metadata.
 
 ## Quickstart (dev)
-- `npm install`
-- `npm run dev -w apps/api`
-- `npm run dev -w apps/web`
+- `pnpm install`
+- Copy `.env.example` to `.env` and set required values.
+  - Set `API_SERVER_ORIGIN=http://localhost:3001` for the web rewrite in dev.
+- `pnpm db:generate`
+- `pnpm db:migrate`
+- `pnpm dev:api`
+- `pnpm dev:web`
 
 ## Documentation
 - [PRD.md](PRD.md)

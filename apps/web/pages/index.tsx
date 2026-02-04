@@ -1,74 +1,19 @@
 import React from "react";
 import { Timeline, TimelineEntry, ZoomControls } from "../components/Timeline";
-
-type EntryStatus = "processing" | "ready" | "error";
-type DriveWriteStatus = "ok" | "pending" | "failed";
-
-type EntryRecord = {
-  id: string;
-  title: string;
-  status: EntryStatus;
-  driveWriteStatus: DriveWriteStatus;
-  driveFileId: string | null;
-  summaryMarkdown: string | null;
-  keyPoints: string[];
-  metadataRefs: string[];
-  startDate: string;
-  endDate: string | null;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-type EntrySourceRef = {
-  id: string;
-  sourceType: "gmail" | "drive";
-  sourceId: string;
-  subject?: string | null;
-  from?: string | null;
-  date?: string | null;
-  name?: string | null;
-  mimeType?: string | null;
-  createdTime?: string | null;
-  modifiedTime?: string | null;
-  size?: string | null;
-  internalDate?: string | null;
-};
-
-type GmailResult = {
-  messageId: string;
-  threadId: string | null;
-  internalDate: string | null;
-  subject: string | null;
-  from: string | null;
-  date: string | null;
-};
-
-type DriveResult = {
-  fileId: string;
-  name: string | null;
-  mimeType: string | null;
-  modifiedTime: string | null;
-  createdTime: string | null;
-  size: string | null;
-};
-
-type SearchResult = {
-  source: "gmail" | "drive";
-  metadataOnly: boolean;
-  results: GmailResult[] | DriveResult[];
-  nextPageToken?: string | null;
-};
-
-type PromptVersion = {
-  id: string;
-  key: string;
-  version: number;
-  model: string;
-  maxTokens: number;
-};
+import { ApiErrorResponseSchema } from "@timeline/shared";
+import type { DriveResult, Entry, EntrySourceRef, GmailResult, Prompt, SearchResult } from "@timeline/shared";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
+
+const getErrorCode = (data: unknown) => {
+  const parsed = ApiErrorResponseSchema.safeParse(data);
+  return parsed.success ? parsed.data.error.code : null;
+};
+
+const getErrorMessage = (data: unknown) => {
+  const parsed = ApiErrorResponseSchema.safeParse(data);
+  return parsed.success ? parsed.data.error.message : null;
+};
 
 const requestJson = async (path: string, options: RequestInit = {}) => {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -86,7 +31,7 @@ const requestJson = async (path: string, options: RequestInit = {}) => {
 
 export default function HomePage() {
   const [zoom, setZoom] = React.useState<"day" | "week" | "month">("week");
-  const [entries, setEntries] = React.useState<EntryRecord[]>([]);
+  const [entries, setEntries] = React.useState<Entry[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [authStatus, setAuthStatus] = React.useState<"unknown" | "connected" | "disconnected">(
@@ -101,7 +46,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedSources, setSelectedSources] = React.useState<Record<string, boolean>>({});
   const [entrySources, setEntrySources] = React.useState<EntrySourceRef[]>([]);
-  const [prompts, setPrompts] = React.useState<PromptVersion[]>([]);
+  const [prompts, setPrompts] = React.useState<Prompt[]>([]);
   const [selectedPromptId, setSelectedPromptId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -128,7 +73,7 @@ export default function HomePage() {
       setAuthStatus("disconnected");
       setEntries([]);
     } else if (response.ok) {
-      setEntries((data?.entries as EntryRecord[]) ?? []);
+      setEntries((data?.entries as Entry[]) ?? []);
       setAuthStatus("connected");
     } else {
       setStatusMessage("Unable to load entries. Please try again.");
@@ -171,13 +116,15 @@ export default function HomePage() {
       })
     });
     if (response.ok) {
-      setEntries((prev) => [data as EntryRecord, ...prev]);
+      setEntries((prev) => [data as Entry, ...prev]);
       setTitleInput("");
       setStartDateInput("");
       setEndDateInput("");
       setTagsInput("");
     } else if (response.status === 401) {
       setAuthStatus("disconnected");
+    } else if (response.status === 400) {
+      setStatusMessage(getErrorMessage(data) ?? "Unable to create entry.");
     } else {
       setStatusMessage("Unable to create entry.");
     }
@@ -189,13 +136,13 @@ export default function HomePage() {
       method: "POST",
       body: JSON.stringify({ promptId: selectedPromptId })
     });
-    if (response.status === 401 && data?.error === "reconnect_required") {
+    if (response.status === 401 && getErrorCode(data) === "reconnect_required") {
       setReconnectRequired(true);
       setStatusMessage("Reconnect required before running summaries.");
       return;
     }
     if (response.ok) {
-      const updated = data as EntryRecord;
+      const updated = data as Entry;
       setEntries((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
       setReconnectRequired(false);
     } else {
@@ -208,13 +155,13 @@ export default function HomePage() {
     const { response, data } = await requestJson(`/entries/${entryId}/retry-drive-write`, {
       method: "POST"
     });
-    if (response.status === 401 && data?.error === "reconnect_required") {
+    if (response.status === 401 && getErrorCode(data) === "reconnect_required") {
       setReconnectRequired(true);
       setStatusMessage("Reconnect required before retrying Drive write.");
       return;
     }
     if (response.ok) {
-      const updated = data as EntryRecord;
+      const updated = data as Entry;
       setEntries((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
       setReconnectRequired(false);
     } else {
@@ -231,7 +178,7 @@ export default function HomePage() {
     const { response, data } = await requestJson(`/search/${source}?${params.toString()}`);
     if (response.status === 401) {
       setSearchState(null);
-      if (data?.error === "reconnect_required") {
+      if (getErrorCode(data) === "reconnect_required") {
         setReconnectRequired(true);
         setStatusMessage("Reconnect required before searching.");
         return;
@@ -289,6 +236,8 @@ export default function HomePage() {
     if (response.ok) {
       setEntrySources((prev) => [...prev, ...(data.sources as EntrySourceRef[])]);
       setSelectedSources({});
+    } else if (response.status === 400) {
+      setStatusMessage(getErrorMessage(data) ?? "Unable to attach sources.");
     } else {
       setStatusMessage("Unable to attach sources.");
     }
@@ -304,6 +253,8 @@ export default function HomePage() {
     });
     if (response.ok && data?.removed) {
       setEntrySources((prev) => prev.filter((source) => source.id !== sourceId));
+    } else if (response.status === 400) {
+      setStatusMessage(getErrorMessage(data) ?? "Unable to detach source.");
     } else {
       setStatusMessage("Unable to detach source.");
     }
@@ -323,7 +274,7 @@ export default function HomePage() {
   const loadPrompts = React.useCallback(async () => {
     const { response, data } = await requestJson("/prompts");
     if (response.ok) {
-      const promptList = (data?.prompts as PromptVersion[]) ?? [];
+      const promptList = (data?.prompts as Prompt[]) ?? [];
       setPrompts(promptList);
       if (!selectedPromptId && promptList.length > 0) {
         setSelectedPromptId(promptList[0].id);

@@ -107,3 +107,16 @@ export const cleanupExpiredSessions = async (prisma: PrismaClient) => {
 };
 
 export const getSessionTtlMs = () => sessionTtlMs;
+
+export const getSessionCookieName = () => {
+  const name = process.env.SESSION_COOKIE_NAME?.trim();
+  return name || "timeline.sid";
+};
+
+export const getSessionCookieSameSite = (): "lax" | "strict" | "none" => {
+  const value = (process.env.SESSION_COOKIE_SAMESITE ?? "lax").toLowerCase();
+  if (value === "lax" || value === "strict" || value === "none") {
+    return value;
+  }
+  throw new Error("SESSION_COOKIE_SAMESITE must be one of: lax, strict, none.");
+};
