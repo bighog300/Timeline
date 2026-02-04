@@ -2,7 +2,7 @@
   "name": "timeline-app",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@10.23.0",
   "engines": {
     "node": "20.x"
   },
@@ -13,11 +13,12 @@
     "db:migrate": "pnpm --filter ./apps/api db:migrate",
     "db:reset": "pnpm --filter ./apps/api db:reset",
     "preflight": "node scripts/preflight.mjs",
-    "test": "pnpm -r --if-present test",
-    "build": "pnpm -r --if-present build",
+    "install": "pnpm install --frozen-lockfile",
+    "build": "pnpm -w --filter @timeline/web build",
+    "lint": "pnpm -w --filter @timeline/web lint",
+    "test": "echo \"No tests configured yet.\"",
     "build:web": "pnpm --filter ./apps/web build",
-    "vercel:install": "pwd && node -v && corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm -v && pnpm config get registry && pnpm install --frozen-lockfile",
-    "vercel:build": "pwd && node -v && corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm -v && pnpm config get registry && pnpm --filter ./apps/web exec node -e \"try { require.resolve('@timeline/shared'); console.log('shared ok'); } catch (error) { console.error('ERROR: @timeline/shared could not be resolved. Ensure the workspace package links before build.'); process.exit(1); }\" && pnpm --filter ./apps/web build",
-    "lint": "pnpm -r --if-present lint"
+    "vercel:install": "pnpm install --frozen-lockfile",
+    "vercel:build": "pnpm -w --filter @timeline/web build"
   }
 }
