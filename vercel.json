@@ -1,7 +1,0 @@
-{
-  "version": 2,
-  "framework": "nextjs",
-  "installCommand": "pnpm run vercel:install",
-  "buildCommand": "pnpm run vercel:build",
-  "outputDirectory": "apps/web/.next"
-}
