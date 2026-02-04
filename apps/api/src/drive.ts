@@ -44,8 +44,11 @@ const folderNames = {
   indexes: "Indexes/"
 };
 
+let cachedStubClient: DriveClient | null = null;
+
 export const createDriveStub = (): DriveClient => {
   const stats: DriveStats = { createCount: 0, updateCount: 0 };
+  let failNextWrite = process.env.DRIVE_STUB_FAIL_ONCE === "1";
   const now = () => new Date().toISOString();
   const folders: Record<string, DriveFolder> = {
     root: { id: "root", name: "root", parentId: null, createdAt: now() }
@@ -80,6 +83,10 @@ export const createDriveStub = (): DriveClient => {
   };
 
   const createFile = async (input: { name: string; parentId: string; content: string; mimeType: string }) => {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw new Error("drive_stub_forced_failure");
+    }
     const timestamp = now();
     const file: DriveFile = {
       id: crypto.randomUUID(),
@@ -97,6 +104,10 @@ export const createDriveStub = (): DriveClient => {
   };
 
   const updateFile = async (input: { fileId: string; content: string }) => {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw new Error("drive_stub_forced_failure");
+    }
     const file = files[input.fileId];
     if (!file) {
       throw new Error("drive_file_missing");
@@ -252,5 +263,8 @@ export const createDriveClient = (options?: { auth?: GoogleApiClient }) => {
     }
     return createGoogleDriveClient(options.auth);
   }
-  return createDriveStub();
+  if (!cachedStubClient) {
+    cachedStubClient = createDriveStub();
+  }
+  return cachedStubClient;
 };

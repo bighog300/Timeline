@@ -376,6 +376,12 @@ export const createApp = (options: Partial<AppContext> = {}) => {
     handleAsync(async (req, res) => {
       const sessionData = ensureSessionData(req) as SessionData;
       await prisma.googleTokenSet.deleteMany({ where: { userId: sessionData.userId } });
+      const preserveSession =
+        process.env.GOOGLE_API_STUB === "1" && req.query.preserveSession?.toString() === "1";
+      if (preserveSession) {
+        res.json({ ok: true });
+        return;
+      }
       req.session.destroy(() => {
         res.json({ ok: true });
       });
