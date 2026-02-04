@@ -1,6 +1,7 @@
 import { EntryStatus } from "@timeline/shared";
 
 import { getCurrentUser } from "../src/server/auth/session";
+import { LogoutButton } from "./logout-button";
 
 const sharedStatus = EntryStatus.options[0];
 
@@ -14,9 +15,7 @@ export default async function HomePage() {
       {user ? (
         <div>
           <p>Signed in as {user.email}</p>
-          <form action="/api/auth/logout" method="post">
-            <button type="submit">Sign out</button>
-          </form>
+          <LogoutButton />
         </div>
       ) : (
         <a href="/api/auth/google/start">Sign in with Google</a>

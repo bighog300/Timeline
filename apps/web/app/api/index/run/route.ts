@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { getEnv } from "../../../../src/env";
-import { getCurrentUser } from "../../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../../src/server/auth/session";
 import { prisma } from "../../../../src/server/db/prisma";
+import { ensureDriveIndexingEnabled } from "../../../../src/server/featureFlags";
 import { isSupportedMimeType, listDriveFiles } from "../../../../src/server/google/drive";
+import { withApiHandler } from "../../../../src/server/http";
+import { assertCsrfToken } from "../../../../src/server/security/csrf";
+import { assertWithinAllQuotas } from "../../../../src/server/usage";
 
 const coerceBytes = (size?: string | null) => {
   if (!size) {
@@ -16,11 +20,13 @@ const coerceBytes = (size?: string | null) => {
   }
 };
 
-export const POST = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const POST = withApiHandler("/api/index/run", async ({ request, requestId, setUserId }) => {
+  await assertCsrfToken(request);
+  ensureDriveIndexingEnabled();
+
+  const user = await requireCurrentUser();
+  setUserId(user.id);
+  await assertWithinAllQuotas(user.id);
 
   const env = getEnv();
   const maxFiles = env.INDEX_MAX_FILES_PER_RUN;
@@ -37,6 +43,7 @@ export const POST = async () => {
     userId: user.id,
     pageToken: existingState?.cursor ?? undefined,
     pageSize,
+    requestId,
   });
 
   let startIndex = 0;
@@ -169,4 +176,4 @@ export const POST = async () => {
     cursor,
     done,
   });
-};
+});

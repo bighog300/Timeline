@@ -1,39 +1,41 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-import { getCurrentUser } from "../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../src/server/auth/session";
+import { ValidationError } from "../../../src/server/errors";
+import { ensureEmbeddingsEnabled } from "../../../src/server/featureFlags";
+import { withApiHandler } from "../../../src/server/http";
+import { assertCsrfToken } from "../../../src/server/security/csrf";
+import { assertSearchQuota, recordSearchUsage } from "../../../src/server/usage";
 import { searchEmbeddings } from "../../../src/server/embeddings/pipeline";
-
-type SearchRequest = {
-  query?: string;
-  limit?: number;
-};
 
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 20;
+const MAX_QUERY_CHARS = 2000;
 
-export const POST = async (request: Request) => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+const searchSchema = z.object({
+  query: z.string().trim().min(1).max(MAX_QUERY_CHARS),
+  limit: z.coerce.number().int().min(1).max(MAX_LIMIT).optional(),
+});
 
-  let body: SearchRequest;
-  try {
-    body = (await request.json()) as SearchRequest;
-  } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
-  }
-  const query = body.query?.trim();
-  if (!query) {
-    return NextResponse.json({ error: "Query is required." }, { status: 400 });
-  }
+export const POST = withApiHandler("/api/search", async ({ request, requestId, setUserId }) => {
+  await assertCsrfToken(request);
+  ensureEmbeddingsEnabled();
 
-  const limit = Math.min(
-    MAX_LIMIT,
-    Math.max(1, body.limit ?? DEFAULT_LIMIT),
+  const user = await requireCurrentUser();
+  setUserId(user.id);
+
+  const body = searchSchema.parse(
+    await request.json().catch(() => {
+      throw new ValidationError("Invalid request body.");
+    }),
   );
+  const limit = Math.min(MAX_LIMIT, Math.max(1, body.limit ?? DEFAULT_LIMIT));
 
-  const results = await searchEmbeddings(user.id, query, limit);
+  await assertSearchQuota(user.id, 1);
+
+  const results = await searchEmbeddings(user.id, body.query, limit, requestId);
+  await recordSearchUsage(user.id, 1);
 
   return NextResponse.json({
     results: results.map((row) => ({
@@ -45,4 +47,4 @@ export const POST = async (request: Request) => {
       updatedAt: row.updatedAt,
     })),
   });
-};
+});

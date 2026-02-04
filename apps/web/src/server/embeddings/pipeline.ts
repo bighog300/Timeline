@@ -104,10 +104,10 @@ const fetchExistingChunkIndexes = async (
 
 export const runEmbeddingPipeline = async (
   userId: string,
-  options?: { driveFileRefId?: string },
+  options?: { driveFileRefId?: string; maxChunks?: number; requestId?: string },
 ) => {
   const env = getEnv();
-  const maxChunks = env.EMBED_MAX_CHUNKS_PER_RUN;
+  const maxChunks = options?.maxChunks ?? env.EMBED_MAX_CHUNKS_PER_RUN;
   const pageSize = 10;
 
   let processedArtifacts = 0;
@@ -169,7 +169,11 @@ export const runEmbeddingPipeline = async (
         continue;
       }
 
-      const embeddings = await embedTexts(selected.map((chunk) => chunk.text));
+      const embeddings = await embedTexts(selected.map((chunk) => chunk.text), {
+        requestId: options?.requestId,
+        userId,
+        route: "/api/embed/run",
+      });
       if (embeddings.length !== selected.length) {
         throw new Error(\"Embedding response size mismatch.\");
       }
@@ -207,8 +211,13 @@ export const searchEmbeddings = async (
   userId: string,
   query: string,
   limit: number,
+  requestId?: string,
 ) => {
-  const [queryEmbedding] = await embedTexts([query]);
+  const [queryEmbedding] = await embedTexts([query], {
+    requestId,
+    userId,
+    route: "/api/search",
+  });
   const queryVector = vectorSql(queryEmbedding);
 
   const rows = await prisma.$queryRaw<

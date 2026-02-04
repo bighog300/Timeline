@@ -1,28 +1,37 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-import { getCurrentUser } from "../../../../src/server/auth/session";
+import { getEnv } from "../../../../src/env";
+import { requireCurrentUser } from "../../../../src/server/auth/session";
+import { ensureEmbeddingsEnabled } from "../../../../src/server/featureFlags";
+import { withApiHandler } from "../../../../src/server/http";
+import { assertCsrfToken } from "../../../../src/server/security/csrf";
+import { assertEmbedQuota, recordEmbedUsage } from "../../../../src/server/usage";
 import { runEmbeddingPipeline } from "../../../../src/server/embeddings/pipeline";
 
-type EmbedRunRequest = {
-  driveFileRefId?: string;
-};
+const embedRequestSchema = z.object({
+  driveFileRefId: z.string().uuid().optional(),
+});
 
-export const POST = async (request: Request) => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const POST = withApiHandler("/api/embed/run", async ({ request, requestId, setUserId }) => {
+  await assertCsrfToken(request);
+  ensureEmbeddingsEnabled();
 
-  let payload: EmbedRunRequest | null = null;
-  try {
-    payload = (await request.json()) as EmbedRunRequest;
-  } catch {
-    payload = null;
-  }
+  const user = await requireCurrentUser();
+  setUserId(user.id);
 
+  const payload = embedRequestSchema.parse(await request.json().catch(() => ({})));
+
+  const env = getEnv();
+  const remaining = await assertEmbedQuota(user.id, 1);
+  const maxChunks = Math.min(env.EMBED_MAX_CHUNKS_PER_RUN, remaining);
   const summary = await runEmbeddingPipeline(user.id, {
-    driveFileRefId: payload?.driveFileRefId,
+    driveFileRefId: payload.driveFileRefId,
+    maxChunks,
+    requestId,
   });
 
+  await recordEmbedUsage(user.id, summary.embeddedChunks);
+
   return NextResponse.json(summary);
-};
+});

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { getCsrfToken } from "../../src/client/csrf";
+
 type DriveFileRef = {
   id: string;
   driveFileId: string;
@@ -76,7 +78,12 @@ export default function IngestPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/index/run", { method: "POST" });
+      const response = await fetch("/api/index/run", {
+        method: "POST",
+        headers: {
+          "x-csrf-token": getCsrfToken() ?? "",
+        },
+      });
       const data = await response.json();
       setMessage(`Index run: ${JSON.stringify(data)}`);
       await loadFiles();
@@ -91,7 +98,12 @@ export default function IngestPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/ingest/run", { method: "POST" });
+      const response = await fetch("/api/ingest/run", {
+        method: "POST",
+        headers: {
+          "x-csrf-token": getCsrfToken() ?? "",
+        },
+      });
       const data = await response.json();
       setMessage(`Ingest run: ${JSON.stringify(data)}`);
       await loadFiles();

@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser } from "../../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../../src/server/auth/session";
+import { ensureDriveIndexingEnabled } from "../../../../src/server/featureFlags";
+import { withApiHandler } from "../../../../src/server/http";
+import { assertCsrfToken } from "../../../../src/server/security/csrf";
+import { assertWithinAllQuotas } from "../../../../src/server/usage";
 import { ingestDriveFiles } from "../../../../src/server/ingest/ingest";
 
-export const POST = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const POST = withApiHandler("/api/ingest/run", async ({ request, requestId, setUserId }) => {
+  await assertCsrfToken(request);
+  ensureDriveIndexingEnabled();
 
-  const summary = await ingestDriveFiles(user.id);
+  const user = await requireCurrentUser();
+  setUserId(user.id);
+  await assertWithinAllQuotas(user.id);
+
+  const summary = await ingestDriveFiles(user.id, requestId);
   return NextResponse.json(summary);
-};
+});

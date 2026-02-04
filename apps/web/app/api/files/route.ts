@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser } from "../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../src/server/auth/session";
 import { prisma } from "../../../src/server/db/prisma";
+import { withApiHandler } from "../../../src/server/http";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
 
-export const GET = async (request: Request) => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const GET = withApiHandler("/api/files", async ({ request, setUserId }) => {
+  const user = await requireCurrentUser();
+  setUserId(user.id);
 
   const url = new URL(request.url);
   const limit = Math.min(
@@ -55,4 +54,4 @@ export const GET = async (request: Request) => {
       contentStatusCounts.map((row) => [row.contentStatus, row._count.contentStatus]),
     ),
   });
-};
+});

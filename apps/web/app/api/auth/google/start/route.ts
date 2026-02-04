@@ -2,13 +2,14 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { getEnv } from "../../../../../src/env";
-import { getCurrentUser } from "../../../../../src/server/auth/session";
 import { prisma } from "../../../../../src/server/db/prisma";
+import { getCurrentUser } from "../../../../../src/server/auth/session";
+import { withApiHandler } from "../../../../../src/server/http";
 
 const STATE_COOKIE_NAME = "__Host-timeline-google-oauth-state";
 const STATE_TTL_SECONDS = 300;
 
-const buildGoogleAuthUrl = async (state: string) => {
+const buildGoogleAuthUrl = async (state: string, userId?: string | null) => {
   const env = getEnv();
   const redirectUrl = new URL(env.GOOGLE_OAUTH_REDIRECT_URI);
   const baseUrl = new URL(env.APP_BASE_URL);
@@ -28,11 +29,10 @@ const buildGoogleAuthUrl = async (state: string) => {
   url.searchParams.set("scope", scopes);
   url.searchParams.set("state", state);
 
-  const currentUser = await getCurrentUser();
-  const existingConnection = currentUser
+  const existingConnection = userId
     ? await prisma.driveConnection.findFirst({
         where: {
-          userId: currentUser.id,
+          userId,
           provider: "google",
         },
       })
@@ -47,24 +47,22 @@ const buildGoogleAuthUrl = async (state: string) => {
   return url.toString();
 };
 
-export const GET = async () => {
-  try {
-    const state = crypto.randomUUID();
+export const GET = withApiHandler("/api/auth/google/start", async ({ setUserId }) => {
+  const state = crypto.randomUUID();
 
-    cookies().set(STATE_COOKIE_NAME, state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: STATE_TTL_SECONDS,
-    });
+  cookies().set(STATE_COOKIE_NAME, state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: STATE_TTL_SECONDS,
+  });
 
-    const authUrl = await buildGoogleAuthUrl(state);
-    return NextResponse.redirect(authUrl);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Unable to start OAuth flow." },
-      { status: 500 },
-    );
+  const currentUser = await getCurrentUser();
+  if (currentUser) {
+    setUserId(currentUser.id);
   }
-};
+
+  const authUrl = await buildGoogleAuthUrl(state, currentUser?.id);
+  return NextResponse.redirect(authUrl);
+});

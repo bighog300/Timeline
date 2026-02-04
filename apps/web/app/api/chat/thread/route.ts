@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser } from "../../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../../src/server/auth/session";
 import { prisma } from "../../../../src/server/db/prisma";
+import { ensureChatEnabled } from "../../../../src/server/featureFlags";
+import { withApiHandler } from "../../../../src/server/http";
+import { assertCsrfToken } from "../../../../src/server/security/csrf";
+import { assertWithinAllQuotas } from "../../../../src/server/usage";
 
-export const POST = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const POST = withApiHandler("/api/chat/thread", async ({ request, setUserId }) => {
+  await assertCsrfToken(request);
+  ensureChatEnabled();
+
+  const user = await requireCurrentUser();
+  setUserId(user.id);
+  await assertWithinAllQuotas(user.id);
 
   const thread = await prisma.chatThread.create({
     data: {
@@ -19,4 +25,4 @@ export const POST = async () => {
   });
 
   return NextResponse.json({ threadId: thread.id });
-};
+});

@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser } from "../../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../../src/server/auth/session";
 import { prisma } from "../../../../src/server/db/prisma";
 import { getDriveConnection } from "../../../../src/server/google/oauth";
+import { withApiHandler } from "../../../../src/server/http";
 
-export const GET = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const GET = withApiHandler("/api/drive/status", async ({ setUserId }) => {
+  const user = await requireCurrentUser();
+  setUserId(user.id);
 
   const connection = await getDriveConnection(user.id);
   const counts = await prisma.driveFileRef.groupBy({
@@ -36,4 +35,4 @@ export const GET = async () => {
     connected: Boolean(connection),
     statusCounts,
   });
-};
+});

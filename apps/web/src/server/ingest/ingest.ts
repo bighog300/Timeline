@@ -27,7 +27,7 @@ const buildSourceMetadata = (file: {
   modifiedTime: file.modifiedTime?.toISOString() ?? null,
 });
 
-export const ingestDriveFiles = async (userId: string) => {
+export const ingestDriveFiles = async (userId: string, requestId?: string) => {
   const env = getEnv();
   const maxFiles = env.INGEST_MAX_FILES_PER_RUN;
   const maxBytes = env.INGEST_MAX_BYTES_PER_RUN;
@@ -70,6 +70,7 @@ export const ingestDriveFiles = async (userId: string) => {
         userId,
         driveFileId: file.driveFileId,
         mimeType: file.mimeType,
+        requestId,
       });
 
       if (textResult.status === "skipped") {

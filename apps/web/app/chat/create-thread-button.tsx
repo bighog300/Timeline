@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { getCsrfToken } from "../../src/client/csrf";
+
 type ThreadResponse = {
   threadId?: string;
   error?: string;
@@ -17,7 +19,12 @@ export const CreateThreadButton = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/chat/thread", { method: "POST" });
+      const response = await fetch("/api/chat/thread", {
+        method: "POST",
+        headers: {
+          "x-csrf-token": getCsrfToken() ?? "",
+        },
+      });
       const data = (await response.json()) as ThreadResponse;
       if (!response.ok || !data.threadId) {
         setError(data.error ?? "Failed to create thread.");

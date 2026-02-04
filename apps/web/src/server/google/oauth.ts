@@ -1,4 +1,5 @@
 import { getEnv } from "../../env";
+import { ExternalApiError } from "../errors";
 import { prisma } from "../db/prisma";
 import { decryptString, encryptString } from "../crypto/encryption";
 
@@ -30,7 +31,7 @@ const refreshAccessToken = async (refreshToken: string) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to refresh Google access token.");
+    throw new ExternalApiError("Failed to refresh Google access token.");
   }
 
   return (await response.json()) as RefreshTokenResponse;
@@ -62,7 +63,7 @@ export const getGoogleDriveAccessToken = async (userId: string) => {
   const refreshToken = decryptString(connection.refreshTokenEncrypted);
   const refreshed = await refreshAccessToken(refreshToken);
   if (!refreshed.access_token || !refreshed.expires_in) {
-    throw new Error("Google token refresh returned no access token.");
+    throw new ExternalApiError("Google token refresh returned no access token.");
   }
 
   const tokenExpiry = new Date(Date.now() + refreshed.expires_in * 1000);

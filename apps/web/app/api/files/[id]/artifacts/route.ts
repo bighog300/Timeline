@@ -1,51 +1,53 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-import { getCurrentUser } from "../../../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../../../src/server/auth/session";
 import { prisma } from "../../../../../src/server/db/prisma";
+import { NotFoundError } from "../../../../../src/server/errors";
+import { withApiHandler } from "../../../../../src/server/http";
 
-export const GET = async (
-  request: Request,
-  { params }: { params: { id: string } },
-) => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const GET = withApiHandler(
+  "/api/files/[id]/artifacts",
+  async ({ request, params, setUserId }) => {
+    const user = await requireCurrentUser();
+    setUserId(user.id);
 
-  const driveFileRef = await prisma.driveFileRef.findFirst({
-    where: {
-      id: params.id,
-      userId: user.id,
-    },
-  });
+    const fileId = z.string().uuid().parse(params.id);
+    const driveFileRef = await prisma.driveFileRef.findFirst({
+      where: {
+        id: fileId,
+        userId: user.id,
+      },
+    });
 
-  if (!driveFileRef) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
-  }
+    if (!driveFileRef) {
+      throw new NotFoundError("Not found.");
+    }
 
-  const url = new URL(request.url);
-  const includeText = url.searchParams.get("includeText") === "1";
+    const url = new URL(request.url);
+    const includeText = url.searchParams.get("includeText") === "1";
 
-  const artifacts = await prisma.derivedArtifact.findMany({
-    where: {
-      driveFileRefId: driveFileRef.id,
-      userId: user.id,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      id: true,
-      type: true,
-      updatedAt: true,
-      contentHash: true,
-      contentText: includeText,
-      contentJson: includeText,
-    },
-  });
+    const artifacts = await prisma.derivedArtifact.findMany({
+      where: {
+        driveFileRefId: driveFileRef.id,
+        userId: user.id,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      select: {
+        id: true,
+        type: true,
+        updatedAt: true,
+        contentHash: true,
+        contentText: includeText,
+        contentJson: includeText,
+      },
+    });
 
-  return NextResponse.json({
-    fileId: driveFileRef.id,
-    artifacts,
-  });
-};
+    return NextResponse.json({
+      fileId: driveFileRef.id,
+      artifacts,
+    });
+  },
+);
