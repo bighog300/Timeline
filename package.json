@@ -9,6 +9,7 @@
     "db:generate": "pnpm --filter ./apps/api db:generate",
     "db:migrate": "pnpm --filter ./apps/api db:migrate",
     "db:reset": "pnpm --filter ./apps/api db:reset",
+    "preflight": "node scripts/preflight.mjs",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint"
