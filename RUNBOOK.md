@@ -44,6 +44,7 @@
 ### Vercel-specific requirements
 - Vercel requires **Node 20.x**. This repo pins it via `.nvmrc` and `.node-version`.
 - If Vercel `pnpm install` fails with `ERR_INVALID_THIS`, ensure pnpm v9 is pinned via the root `packageManager` field.
+- Vercel scripts explicitly enable Corepack, activate pnpm v9, and sanity-check `@timeline/shared` resolution for the web workspace before building.
 - Recommended Vercel project settings for the web app:
   - **Root Directory:** `apps/web`
   - **Install Command:** `pnpm install`
