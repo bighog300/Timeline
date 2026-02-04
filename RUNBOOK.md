@@ -10,6 +10,8 @@
 ## OAuth Issues
 - If `reconnect_required`, verify Google credentials and refresh token storage.
 - Ensure encryption keys are configured via `ENCRYPTION_KEYRING_JSON` or `ENCRYPTION_KEY_BASE64` + `KEY_VERSION`.
+- Required Google OAuth env vars: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`.
+- OpenAI summaries require `OPENAI_API_KEY`.
 
 ## Drive Write Failures
 - Confirm `drive.file` scope and folder permissions.

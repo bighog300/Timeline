@@ -13,14 +13,59 @@ type EntryRecord = {
   summaryMarkdown: string | null;
   keyPoints: string[];
   metadataRefs: string[];
+  startDate: string;
+  endDate: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+type EntrySourceRef = {
+  id: string;
+  sourceType: "gmail" | "drive";
+  sourceId: string;
+  subject?: string | null;
+  from?: string | null;
+  date?: string | null;
+  name?: string | null;
+  mimeType?: string | null;
+  createdTime?: string | null;
+  modifiedTime?: string | null;
+  size?: string | null;
+  internalDate?: string | null;
+};
+
+type GmailResult = {
+  messageId: string;
+  threadId: string | null;
+  internalDate: string | null;
+  subject: string | null;
+  from: string | null;
+  date: string | null;
+};
+
+type DriveResult = {
+  fileId: string;
+  name: string | null;
+  mimeType: string | null;
+  modifiedTime: string | null;
+  createdTime: string | null;
+  size: string | null;
 };
 
 type SearchResult = {
   source: "gmail" | "drive";
   metadataOnly: boolean;
-  results: unknown[];
+  results: GmailResult[] | DriveResult[];
+  nextPageToken?: string | null;
+};
+
+type PromptVersion = {
+  id: string;
+  key: string;
+  version: number;
+  model: string;
+  maxTokens: number;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
@@ -49,7 +94,15 @@ export default function HomePage() {
   );
   const [reconnectRequired, setReconnectRequired] = React.useState(false);
   const [titleInput, setTitleInput] = React.useState("");
+  const [startDateInput, setStartDateInput] = React.useState("");
+  const [endDateInput, setEndDateInput] = React.useState("");
+  const [tagsInput, setTagsInput] = React.useState("");
   const [searchState, setSearchState] = React.useState<SearchResult | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [selectedSources, setSelectedSources] = React.useState<Record<string, boolean>>({});
+  const [entrySources, setEntrySources] = React.useState<EntrySourceRef[]>([]);
+  const [prompts, setPrompts] = React.useState<PromptVersion[]>([]);
+  const [selectedPromptId, setSelectedPromptId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
   const selectedEntry = entries.find((entry) => entry.id === selectedId) ?? null;
@@ -59,8 +112,8 @@ export default function HomePage() {
       entries.map((entry) => ({
         id: entry.id,
         title: entry.title,
-        start: new Date(entry.createdAt),
-        end: new Date(entry.updatedAt),
+        start: new Date(entry.startDate),
+        end: new Date(entry.endDate ?? entry.startDate),
         status: entry.status,
         driveWriteStatus: entry.driveWriteStatus
       })),
@@ -88,13 +141,7 @@ export default function HomePage() {
   }, [loadEntries]);
 
   const startOAuth = async () => {
-    setStatusMessage(null);
-    const { response, data } = await requestJson("/auth/google/start");
-    if (response.ok && data?.url) {
-      window.location.href = data.url as string;
-      return;
-    }
-    setStatusMessage("Unable to start OAuth flow.");
+    window.location.href = `${API_BASE}/auth/google/start`;
   };
 
   const handleLogout = async () => {
@@ -107,13 +154,28 @@ export default function HomePage() {
   const handleCreateEntry = async (event: React.FormEvent) => {
     event.preventDefault();
     setStatusMessage(null);
+    if (!startDateInput) {
+      setStatusMessage("Start date is required.");
+      return;
+    }
     const { response, data } = await requestJson("/entries", {
       method: "POST",
-      body: JSON.stringify({ title: titleInput.trim() || "Untitled" })
+      body: JSON.stringify({
+        title: titleInput.trim() || "Untitled",
+        startDate: new Date(startDateInput).toISOString(),
+        endDate: endDateInput ? new Date(endDateInput).toISOString() : null,
+        tags: tagsInput
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      })
     });
     if (response.ok) {
       setEntries((prev) => [data as EntryRecord, ...prev]);
       setTitleInput("");
+      setStartDateInput("");
+      setEndDateInput("");
+      setTagsInput("");
     } else if (response.status === 401) {
       setAuthStatus("disconnected");
     } else {
@@ -123,7 +185,10 @@ export default function HomePage() {
 
   const handleRunEntry = async (entryId: string) => {
     setStatusMessage(null);
-    const { response, data } = await requestJson(`/entries/${entryId}/run`, { method: "POST" });
+    const { response, data } = await requestJson(`/entries/${entryId}/run`, {
+      method: "POST",
+      body: JSON.stringify({ promptId: selectedPromptId })
+    });
     if (response.status === 401 && data?.error === "reconnect_required") {
       setReconnectRequired(true);
       setStatusMessage("Reconnect required before running summaries.");
@@ -138,12 +203,40 @@ export default function HomePage() {
     }
   };
 
+  const handleRetryDriveWrite = async (entryId: string) => {
+    setStatusMessage(null);
+    const { response, data } = await requestJson(`/entries/${entryId}/retry-drive-write`, {
+      method: "POST"
+    });
+    if (response.status === 401 && data?.error === "reconnect_required") {
+      setReconnectRequired(true);
+      setStatusMessage("Reconnect required before retrying Drive write.");
+      return;
+    }
+    if (response.ok) {
+      const updated = data as EntryRecord;
+      setEntries((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
+      setReconnectRequired(false);
+    } else {
+      setStatusMessage("Unable to retry Drive write.");
+    }
+  };
+
   const handleSearch = async (source: "gmail" | "drive") => {
     setStatusMessage(null);
-    const { response, data } = await requestJson(`/search/${source}`);
+    const params = new URLSearchParams();
+    if (searchQuery) {
+      params.set("q", searchQuery);
+    }
+    const { response, data } = await requestJson(`/search/${source}?${params.toString()}`);
     if (response.status === 401) {
-      setAuthStatus("disconnected");
       setSearchState(null);
+      if (data?.error === "reconnect_required") {
+        setReconnectRequired(true);
+        setStatusMessage("Reconnect required before searching.");
+        return;
+      }
+      setAuthStatus("disconnected");
       return;
     }
     if (response.ok) {
@@ -152,6 +245,99 @@ export default function HomePage() {
       setStatusMessage("Search failed. Try again.");
     }
   };
+
+  const toggleSourceSelection = (key: string) => {
+    setSelectedSources((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleAttachSources = async () => {
+    if (!selectedEntry || !searchState) {
+      setStatusMessage("Select an entry first.");
+      return;
+    }
+    const sources =
+      searchState.source === "gmail"
+        ? (searchState.results as GmailResult[])
+            .filter((item) => selectedSources[`gmail:${item.messageId}`])
+            .map((item) => ({
+              sourceType: "gmail",
+              sourceId: item.messageId,
+              subject: item.subject,
+              from: item.from,
+              date: item.date,
+              internalDate: item.internalDate
+            }))
+        : (searchState.results as DriveResult[])
+            .filter((item) => selectedSources[`drive:${item.fileId}`])
+            .map((item) => ({
+              sourceType: "drive",
+              sourceId: item.fileId,
+              name: item.name,
+              mimeType: item.mimeType,
+              createdTime: item.createdTime,
+              modifiedTime: item.modifiedTime,
+              size: item.size
+            }));
+    if (sources.length === 0) {
+      setStatusMessage("Select at least one source to attach.");
+      return;
+    }
+    const { response, data } = await requestJson(`/entries/${selectedEntry.id}/sources`, {
+      method: "POST",
+      body: JSON.stringify({ sources })
+    });
+    if (response.ok) {
+      setEntrySources((prev) => [...prev, ...(data.sources as EntrySourceRef[])]);
+      setSelectedSources({});
+    } else {
+      setStatusMessage("Unable to attach sources.");
+    }
+  };
+
+  const handleDetachSource = async (sourceId: string) => {
+    if (!selectedEntry) {
+      return;
+    }
+    const { response, data } = await requestJson(`/entries/${selectedEntry.id}/sources`, {
+      method: "DELETE",
+      body: JSON.stringify({ sourceIds: [sourceId] })
+    });
+    if (response.ok && data?.removed) {
+      setEntrySources((prev) => prev.filter((source) => source.id !== sourceId));
+    } else {
+      setStatusMessage("Unable to detach source.");
+    }
+  };
+
+  const loadEntrySources = React.useCallback(async () => {
+    if (!selectedEntry) {
+      setEntrySources([]);
+      return;
+    }
+    const { response, data } = await requestJson(`/entries/${selectedEntry.id}/sources`);
+    if (response.ok) {
+      setEntrySources((data?.sources as EntrySourceRef[]) ?? []);
+    }
+  }, [selectedEntry]);
+
+  const loadPrompts = React.useCallback(async () => {
+    const { response, data } = await requestJson("/prompts");
+    if (response.ok) {
+      const promptList = (data?.prompts as PromptVersion[]) ?? [];
+      setPrompts(promptList);
+      if (!selectedPromptId && promptList.length > 0) {
+        setSelectedPromptId(promptList[0].id);
+      }
+    }
+  }, [selectedPromptId]);
+
+  React.useEffect(() => {
+    void loadEntrySources();
+  }, [loadEntrySources]);
+
+  React.useEffect(() => {
+    void loadPrompts();
+  }, [loadPrompts]);
 
   return (
     <div className="page">
@@ -214,6 +400,25 @@ export default function HomePage() {
             onChange={(event: { target: { value: string } }) => setTitleInput(event.target.value)}
             disabled={authStatus !== "connected"}
           />
+          <input
+            type="date"
+            value={startDateInput}
+            onChange={(event: { target: { value: string } }) => setStartDateInput(event.target.value)}
+            disabled={authStatus !== "connected"}
+          />
+          <input
+            type="date"
+            value={endDateInput}
+            onChange={(event: { target: { value: string } }) => setEndDateInput(event.target.value)}
+            disabled={authStatus !== "connected"}
+          />
+          <input
+            type="text"
+            placeholder="Tags (comma separated)"
+            value={tagsInput}
+            onChange={(event: { target: { value: string } }) => setTagsInput(event.target.value)}
+            disabled={authStatus !== "connected"}
+          />
           <button type="submit" disabled={authStatus !== "connected"}>
             Create entry
           </button>
@@ -225,6 +430,15 @@ export default function HomePage() {
             <h2>Metadata search</h2>
             <p className="muted">Search Gmail or Drive metadata only.</p>
           </div>
+        </div>
+        <div className="search-inputs">
+          <input
+            type="text"
+            placeholder="Search query (optional)"
+            value={searchQuery}
+            onChange={(event: { target: { value: string } }) => setSearchQuery(event.target.value)}
+            disabled={authStatus !== "connected"}
+          />
         </div>
         <div className="search-actions">
           <button onClick={() => handleSearch("gmail")} disabled={authStatus !== "connected"}>
@@ -239,6 +453,47 @@ export default function HomePage() {
             <strong>{searchState.source.toUpperCase()}</strong> • metadataOnly:
             {" "}
             {String(searchState.metadataOnly)} • results: {searchState.results.length}
+          </div>
+        )}
+        {searchState && searchState.results.length > 0 && (
+          <div className="search-list">
+            {(searchState.results as Array<GmailResult | DriveResult>).map((result) => {
+              if (searchState.source === "gmail") {
+                const item = result as GmailResult;
+                const key = `gmail:${item.messageId}`;
+                return (
+                  <label key={key} className="search-item">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selectedSources[key])}
+                      onChange={() => toggleSourceSelection(key)}
+                    />
+                    <div>
+                      <div className="search-title">{item.subject ?? "No subject"}</div>
+                      <div className="muted">{item.from ?? "Unknown sender"}</div>
+                    </div>
+                  </label>
+                );
+              }
+              const item = result as DriveResult;
+              const key = `drive:${item.fileId}`;
+              return (
+                <label key={key} className="search-item">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(selectedSources[key])}
+                    onChange={() => toggleSourceSelection(key)}
+                  />
+                  <div>
+                    <div className="search-title">{item.name ?? "Untitled file"}</div>
+                    <div className="muted">{item.mimeType ?? "Unknown type"}</div>
+                  </div>
+                </label>
+              );
+            })}
+            <button onClick={handleAttachSources} disabled={!selectedEntry}>
+              Attach selected to entry
+            </button>
           </div>
         )}
       </section>
@@ -263,7 +518,15 @@ export default function HomePage() {
               >
                 Run summary
               </button>
-              {selectedEntry.driveFileId && (
+              {selectedEntry.driveWriteStatus === "failed" && (
+                <button
+                  className="secondary"
+                  onClick={() => handleRetryDriveWrite(selectedEntry.id)}
+                >
+                  Retry Drive write
+                </button>
+              )}
+              {selectedEntry.driveFileId && selectedEntry.driveWriteStatus === "ok" && (
                 <a
                   className="link"
                   href={`https://drive.google.com/open?id=${selectedEntry.driveFileId}`}
@@ -275,8 +538,37 @@ export default function HomePage() {
               )}
             </div>
             <div className="drawer-section">
+              <h3>Prompt version</h3>
+              <select
+                value={selectedPromptId ?? ""}
+                onChange={(event: { target: { value: string } }) => setSelectedPromptId(event.target.value)}
+                disabled={prompts.length === 0}
+              >
+                {prompts.length === 0 && <option value="">No prompts available</option>}
+                {prompts.map((prompt) => (
+                  <option key={prompt.id} value={prompt.id}>
+                    {prompt.key} v{prompt.version} • {prompt.model}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="drawer-section">
               <h3>Summary</h3>
               <p>{selectedEntry.summaryMarkdown ?? "No summary generated yet."}</p>
+            </div>
+            <div className="drawer-section">
+              <h3>Tags</h3>
+              {selectedEntry.tags.length > 0 ? (
+                <div className="tag-list">
+                  {selectedEntry.tags.map((tag) => (
+                    <span key={tag} className="tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">No tags yet.</p>
+              )}
             </div>
             <div className="drawer-section">
               <h3>Key points</h3>
@@ -291,15 +583,25 @@ export default function HomePage() {
               )}
             </div>
             <div className="drawer-section">
-              <h3>Metadata references</h3>
-              {selectedEntry.metadataRefs.length > 0 ? (
-                <ul>
-                  {selectedEntry.metadataRefs.map((ref) => (
-                    <li key={ref}>{ref}</li>
+              <h3>Selected sources</h3>
+              {entrySources.length > 0 ? (
+                <ul className="source-list">
+                  {entrySources.map((source) => (
+                    <li key={source.id} className="source-item">
+                      <div>
+                        <strong>{source.sourceType.toUpperCase()}</strong>{" "}
+                        {source.sourceType === "gmail"
+                          ? source.subject ?? source.sourceId
+                          : source.name ?? source.sourceId}
+                      </div>
+                      <button className="link" onClick={() => handleDetachSource(source.id)}>
+                        Remove
+                      </button>
+                    </li>
                   ))}
                 </ul>
               ) : (
-                <p className="muted">No metadata references yet.</p>
+                <p className="muted">No sources attached yet.</p>
               )}
             </div>
           </div>
@@ -364,7 +666,8 @@ export default function HomePage() {
           color: #7f1d1d;
         }
         .entry-form {
-          display: flex;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
           gap: 12px;
           flex-wrap: wrap;
         }
@@ -397,11 +700,31 @@ export default function HomePage() {
           gap: 12px;
           flex-wrap: wrap;
         }
+        .search-inputs {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
         .search-result {
           background: #eff6ff;
           border-radius: 10px;
           padding: 10px 12px;
           font-size: 14px;
+        }
+        .search-list {
+          display: grid;
+          gap: 10px;
+        }
+        .search-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 10px;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+        }
+        .search-title {
+          font-weight: 600;
         }
         .drawer {
           border: 1px solid #e2e8f0;
@@ -435,6 +758,36 @@ export default function HomePage() {
         .link {
           color: #1d4ed8;
           font-weight: 600;
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          text-decoration: underline;
+        }
+        .tag-list {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .tag {
+          background: #e2e8f0;
+          color: #1e293b;
+          padding: 4px 10px;
+          border-radius: 999px;
+          font-size: 12px;
+        }
+        .source-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: grid;
+          gap: 8px;
+        }
+        .source-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
         }
         @media (max-width: 900px) {
           .drawer {

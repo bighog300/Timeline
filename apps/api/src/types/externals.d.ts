@@ -9,10 +9,12 @@ declare module "express" {
       params: any;
       query: any;
       headers?: Record<string, string | undefined>;
+      sessionID?: string;
     }
     interface Response {
       json: (body: any) => Response;
       status: (code: number) => Response;
+      redirect: (url: string) => Response;
     }
     type NextFunction = (err?: any) => void;
     interface Express {
@@ -20,6 +22,7 @@ declare module "express" {
       get: (...args: any[]) => Express;
       post: (...args: any[]) => Express;
       patch: (...args: any[]) => Express;
+      delete: (...args: any[]) => Express;
       listen: (port: number, callback?: () => void) => any;
     }
   }

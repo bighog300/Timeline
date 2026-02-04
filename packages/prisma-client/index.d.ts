@@ -14,7 +14,9 @@ export class PrismaClient {
   googleTokenSet: {
     findUnique: (args: any) => any;
     upsert: (args: any) => any;
+    update: (args: any) => any;
     delete: (args: any) => any;
+    deleteMany: (args: any) => Promise<{ count: number }>;
   };
   timelineEntry: {
     findMany: (args: any) => any;
@@ -23,10 +25,15 @@ export class PrismaClient {
     update: (args: any) => any;
     count: (args: any) => number;
   };
-  entrySourceRef: Record<string, any>;
+  entrySourceRef: {
+    findMany: (args: any) => any;
+    create: (args: any) => any;
+    deleteMany: (args: any) => Promise<{ count: number }>;
+  };
   derivedArtifact: Record<string, any>;
   promptVersion: {
     findMany: (args: any) => any;
+    findFirst: (args: any) => any;
     create: (args: any) => any;
     findUnique: (args: any) => any;
     updateMany: (args: any) => any;

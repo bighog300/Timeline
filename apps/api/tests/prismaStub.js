@@ -14,6 +14,19 @@ const updateItem = (item, data) => Object.assign(item, data);
 
 const clone = (value) => (typeof structuredClone === "function" ? structuredClone(value) : value);
 
+const matchesWhere = (item, where) =>
+  Object.entries(where).every(([field, value]) => {
+    if (value && typeof value === "object") {
+      if ("lt" in value) {
+        return item[field] < value.lt;
+      }
+      if ("in" in value && Array.isArray(value.in)) {
+        return value.in.includes(item[field]);
+      }
+    }
+    return item[field] === value;
+  });
+
 const createModel = ({ idKey = "id", defaultValues = () => ({}) } = {}) => {
   const store = new Map();
 
@@ -42,7 +55,7 @@ const createModel = ({ idKey = "id", defaultValues = () => ({}) } = {}) => {
   const updateMany = async ({ where, data }) => {
     let count = 0;
     mapToList(store).forEach((item) => {
-      const matches = Object.entries(where).every(([field, value]) => item[field] === value);
+      const matches = matchesWhere(item, where);
       if (matches) {
         updateItem(item, clone(data));
         count += 1;
@@ -54,9 +67,7 @@ const createModel = ({ idKey = "id", defaultValues = () => ({}) } = {}) => {
   const findMany = async ({ where, orderBy } = {}) => {
     let items = mapToList(store);
     if (where) {
-      items = items.filter((item) =>
-        Object.entries(where).every(([field, value]) => item[field] === value)
-      );
+      items = items.filter((item) => matchesWhere(item, where));
     }
     if (orderBy) {
       const [field] = Object.keys(orderBy);
@@ -66,6 +77,10 @@ const createModel = ({ idKey = "id", defaultValues = () => ({}) } = {}) => {
   };
 
   const findUnique = async ({ where }) => findUniqueBy(store, where);
+  const findFirst = async ({ where, orderBy } = {}) => {
+    const items = await findMany({ where, orderBy });
+    return items[0] ?? null;
+  };
 
   const deleteRecord = async ({ where }) => {
     const existing = findUniqueBy(store, where);
@@ -84,12 +99,7 @@ const createModel = ({ idKey = "id", defaultValues = () => ({}) } = {}) => {
         count += 1;
         return;
       }
-      const matches = Object.entries(where).every(([field, value]) => {
-        if (value && typeof value === "object" && "lt" in value) {
-          return item[field] < value.lt;
-        }
-        return item[field] === value;
-      });
+      const matches = matchesWhere(item, where);
       if (matches) {
         store.delete(item[idKey]);
         count += 1;
@@ -107,6 +117,7 @@ const createModel = ({ idKey = "id", defaultValues = () => ({}) } = {}) => {
     updateMany,
     findMany,
     findUnique,
+    findFirst,
     delete: deleteRecord,
     deleteMany,
     count,

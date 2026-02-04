@@ -16,13 +16,7 @@
 ### Commands
 | Command | Result | Notes |
 | --- | --- | --- |
-| `npm run dev -w apps/api` | ✅ Pass | `SHIM_ALLOW=1` set in the script to use local Prisma/Google API shims for dev. |
-| `npm run dev -w apps/web` | ✅ Pass | `NEXT_IGNORE_INCORRECT_LOCKFILE=1` set in the script to avoid lockfile patching without network access. |
-
-### Web Smoke Checklist
-- ✅ Web app loads at `http://localhost:3000`.
-- ✅ API requests route through Next.js rewrites (`/api/entries` returns a 401 JSON response from the API, no CORS errors).
-- ✅ Reconnect-required handling verified by simulating a `401 { "error": "reconnect_required" }` response for `/api/entries/:id/run`: reconnect CTA banner displays and summary content remains unchanged (no partial processing UI).
+| `npm run dev -w apps/web` | ✅ Pass | `NEXT_IGNORE_INCORRECT_LOCKFILE=1` set in the script to avoid lockfile patching without network access. Used for UI review. |
 
 ## Compliance Checklist (Authoritative Constraints)
 
@@ -72,86 +66,178 @@ rg -n "summary|keyPoints|prompt|token|body|content" apps/api/src apps/api/prisma
 ```
 Output:
 ```
-apps/api/src/drive.ts:21:  content: string;
-apps/api/src/drive.ts:35:  createFile: (input: { name: string; parentId: string; content: string; mimeType: string }) => Promise<DriveFile>;
-apps/api/src/drive.ts:36:  updateFile: (input: { fileId: string; content: string }) => Promise<DriveFile>;
-apps/api/src/drive.ts:81:  const createFile = async (input: { name: string; parentId: string; content: string; mimeType: string }) => {
-apps/api/src/drive.ts:88:      content: input.content,
-apps/api/src/drive.ts:98:  const updateFile = async (input: { fileId: string; content: string }) => {
-apps/api/src/drive.ts:103:    file.content = input.content;
-apps/api/src/drive.ts:172:  const createFile = async (input: { name: string; parentId: string; content: string; mimeType: string }) => {
-apps/api/src/drive.ts:181:        body: input.content
-apps/api/src/drive.ts:196:      content: input.content,
-apps/api/src/drive.ts:203:  const updateFile = async (input: { fileId: string; content: string }) => {
-apps/api/src/drive.ts:208:        body: input.content
-apps/api/src/drive.ts:223:      content: input.content,
-apps/api/src/drive.ts:240:      content: "",
-apps/api/src/app.ts:94:    const markdown = entry.summaryMarkdown ?? "";
-apps/api/src/app.ts:96:      await driveClient.updateFile({ fileId: entry.driveFileId, content: markdown });
-apps/api/src/app.ts:102:      content: markdown,
-apps/api/src/app.ts:108:  const writeIndexPackToDrive = async (pack: IndexPackRecord, content: string) => {
-apps/api/src/app.ts:111:      await driveClient.updateFile({ fileId: pack.driveFileId, content });
-apps/api/src/app.ts:117:      content,
-apps/api/src/app.ts:150:      const accessToken = encryptPayload("access-token", activeKeyVersion);
-apps/api/src/app.ts:151:      const refreshToken = encryptPayload("refresh-token", activeKeyVersion);
-apps/api/src/app.ts:153:      const tokenRecord: TokenRecord = {
-apps/api/src/app.ts:169:          accessCiphertext: tokenRecord.encryptedAccessToken,
-apps/api/src/app.ts:170:          accessIv: tokenRecord.accessTokenIv,
-apps/api/src/app.ts:171:          accessAuthTag: tokenRecord.accessTokenAuthTag,
-apps/api/src/app.ts:172:          refreshCiphertext: tokenRecord.encryptedRefreshToken,
-apps/api/src/app.ts:173:          refreshIv: tokenRecord.refreshTokenIv,
-apps/api/src/app.ts:174:          refreshAuthTag: tokenRecord.refreshTokenAuthTag,
-apps/api/src/app.ts:175:          keyVersion: tokenRecord.keyVersion,
-apps/api/src/app.ts:179:          accessCiphertext: tokenRecord.encryptedAccessToken,
-apps/api/src/app.ts:180:          accessIv: tokenRecord.accessTokenIv,
-apps/api/src/app.ts:181:          accessAuthTag: tokenRecord.accessTokenAuthTag,
-apps/api/src/app.ts:182:          refreshCiphertext: tokenRecord.encryptedRefreshToken,
-apps/api/src/app.ts:183:          refreshIv: tokenRecord.refreshTokenIv,
-apps/api/src/app.ts:184:          refreshAuthTag: tokenRecord.refreshTokenAuthTag,
-apps/api/src/app.ts:185:          keyVersion: tokenRecord.keyVersion,
-apps/api/src/app.ts:231:          title: req.body.title ?? "Untitled",
-apps/api/src/app.ts:235:          summaryMarkdown: null,
-apps/api/src/app.ts:236:          keyPoints: [],
-apps/api/src/app.ts:271:      const token = await prisma.googleTokenSet.findUnique({ where: { userId: sessionData.userId } });
-apps/api/src/app.ts:272:      if (!token) {
-apps/api/src/app.ts:279:        ciphertext: token.accessCiphertext,
-apps/api/src/app.ts:280:        iv: token.accessIv,
-apps/api/src/app.ts:281:        authTag: token.accessAuthTag,
-apps/api/src/app.ts:282:        keyVersion: token.keyVersion
-apps/api/src/app.ts:289:          summaryMarkdown: "# Summary\n\nDerived summary output.",
-apps/api/src/app.ts:290:          keyPoints: ["Derived key point"],
-apps/api/src/app.ts:309:      logEvent("summary_run", {
-apps/api/src/app.ts:360:    "/admin/prompts",
-apps/api/src/app.ts:364:      const prompts = await prisma.promptVersion.findMany({ orderBy: { createdAt: "desc" } });
-apps/api/src/app.ts:365:      res.json({ prompts });
-apps/api/src/app.ts:370:    "/admin/prompts",
-apps/api/src/app.ts:374:      const prompt = await prisma.promptVersion.create({
-apps/api/src/app.ts:377:          key: req.body.key ?? "default",
-apps/api/src/app.ts:378:          version: Number(req.body.version ?? 1),
-apps/api/src/app.ts:379:          content: req.body.content ?? "",
-apps/api/src/app.ts:381:          userSelectable: Boolean(req.body.userSelectable ?? true),
-apps/api/src/app.ts:385:      res.status(201).json(prompt);
-apps/api/src/app.ts:390:    "/admin/prompts/:id/activate",
-apps/api/src/app.ts:394:      const target = await prisma.promptVersion.findUnique({ where: { id: req.params.id } });
-apps/api/src/app.ts:401:        prisma.promptVersion.updateMany({
-apps/api/src/app.ts:405:        prisma.promptVersion.update({
-apps/api/src/app.ts:411:      const updated = await prisma.promptVersion.findUnique({ where: { id: target.id } });
-apps/api/src/app.ts:421:    res.json({ output: "Playground output", usage: { promptTokens: 0, completionTokens: 0 } });
-apps/api/src/app.ts:491:        data: { status: req.body.status ?? pack.status }
-apps/api/src/app.ts:509:      const content = `# Index Pack\n\nEntry count: ${entryCount}`;
-apps/api/src/app.ts:517:        const driveFileId = await writeIndexPackToDrive(updatedPack as IndexPackRecord, content);
-apps/api/src/app.ts:543:      const entryIds = z.array(z.string()).safeParse(req.body.entryIds ?? []);
-apps/api/src/types.ts:14:  summaryMarkdown: string | null;
-apps/api/src/types.ts:15:  keyPoints: string[];
-apps/api/src/types.ts:37:  content: string;
 apps/api/src/types/externals.d.ts:8:      body: any;
-apps/api/src/types/externals.d.ts:14:      json: (body: any) => Response;
+apps/api/src/types/externals.d.ts:15:      json: (body: any) => Response;
+apps/api/src/openai.ts:2:  promptTokens: number;
+apps/api/src/openai.ts:8:  content: string;
+apps/api/src/openai.ts:22:      summaryMarkdown: "# Summary\n\nStub summary output.",
+apps/api/src/openai.ts:23:      keyPoints: ["Stub key point"]
+apps/api/src/openai.ts:25:    usage: { promptTokens: 0, completionTokens: 0 }
+apps/api/src/openai.ts:44:          "content-type": "application/json",
+apps/api/src/openai.ts:47:        body: JSON.stringify({
+apps/api/src/openai.ts:49:          max_tokens: maxTokens,
+apps/api/src/openai.ts:60:        choices?: Array<{ message?: { content?: string | null } }>;
+apps/api/src/openai.ts:61:        usage?: { prompt_tokens?: number; completion_tokens?: number };
+apps/api/src/openai.ts:63:      const output = payload.choices?.[0]?.message?.content ?? "";
+apps/api/src/openai.ts:67:          promptTokens: payload.usage?.prompt_tokens ?? 0,
+apps/api/src/openai.ts:68:          completionTokens: payload.usage?.completion_tokens ?? 0
+apps/api/src/types.ts:17:  summaryMarkdown: string | null;
+apps/api/src/types.ts:18:  keyPoints: string[];
+apps/api/src/types.ts:57:  content: string;
 apps/api/prisma/schema.prisma:16:  tokens    GoogleTokenSet?
 apps/api/prisma/schema.prisma:48:  @@map("google_token_sets")
-apps/api/prisma/schema.prisma:58:  summaryMarkdown String?          @map("summary_markdown")
-apps/api/prisma/schema.prisma:59:  keyPoints       String[]         @map("key_points")
-apps/api/prisma/schema.prisma:95:  content        String   @map("content")
-apps/api/prisma/schema.prisma:100:  @@map("prompt_versions")
+apps/api/prisma/schema.prisma:61:  summaryMarkdown String?          @map("summary_markdown")
+apps/api/prisma/schema.prisma:62:  keyPoints       String[]         @map("key_points")
+apps/api/prisma/schema.prisma:107:  content        String   @map("content")
+apps/api/prisma/schema.prisma:109:  maxTokens      Int      @map("max_tokens")
+apps/api/prisma/schema.prisma:114:  @@map("prompt_versions")
+apps/api/src/googleApi.ts:105:    if (!part?.mimeType || !part?.body?.data) {
+apps/api/src/googleApi.ts:109:      collector.push(decodeBase64Url(part.body.data));
+apps/api/src/googleApi.ts:111:      collector.push(stripHtml(decodeBase64Url(part.body.data)));
+apps/api/src/googleApi.ts:124:    return Promise.resolve({ token: this.credentials.access_token ?? "stub-access-token" });
+apps/api/src/googleApi.ts:134:      accessToken: "stub-access-token",
+apps/api/src/googleApi.ts:135:      refreshToken: "stub-refresh-token",
+apps/api/src/googleApi.ts:168:        text: `Stub gmail content for ${messageId}`,
+apps/api/src/googleApi.ts:182:        text: `Stub drive content for ${fileId}`,
+apps/api/src/googleApi.ts:216:      prompt: "consent",
+apps/api/src/googleApi.ts:222:    const { tokens } = await client.getToken(code);
+apps/api/src/googleApi.ts:224:      accessToken: tokens.access_token ?? "",
+apps/api/src/googleApi.ts:225:      refreshToken: tokens.refresh_token ?? null,
+apps/api/src/googleApi.ts:226:      expiryDate: tokens.expiry_date ?? null
+apps/api/src/googleApi.ts:310:    if (payload?.body?.data) {
+apps/api/src/googleApi.ts:311:      textParts.push(decodeBase64Url(payload.body.data));
+apps/api/src/drive.ts:22:  content: string;
+apps/api/src/drive.ts:36:  createFile: (input: { name: string; parentId: string; content: string; mimeType: string }) => Promise<DriveFile>;
+apps/api/src/drive.ts:37:  updateFile: (input: { fileId: string; content: string }) => Promise<DriveFile>;
+apps/api/src/drive.ts:82:  const createFile = async (input: { name: string; parentId: string; content: string; mimeType: string }) => {
+apps/api/src/drive.ts:89:      content: input.content,
+apps/api/src/drive.ts:99:  const updateFile = async (input: { fileId: string; content: string }) => {
+apps/api/src/drive.ts:104:    file.content = input.content;
+apps/api/src/drive.ts:160:  const createFile = async (input: { name: string; parentId: string; content: string; mimeType: string }) => {
+apps/api/src/drive.ts:169:        body: input.content
+apps/api/src/drive.ts:184:      content: input.content,
+apps/api/src/drive.ts:191:  const updateFile = async (input: { fileId: string; content: string }) => {
+apps/api/src/drive.ts:196:        body: input.content
+apps/api/src/drive.ts:211:      content: input.content,
+apps/api/src/drive.ts:228:      content: "",
+apps/api/src/app.ts:168:    const token = await prisma.googleTokenSet.findUnique({ where: { userId } });
+apps/api/src/app.ts:169:    if (!token) {
+apps/api/src/app.ts:174:      ciphertext: token.accessCiphertext,
+apps/api/src/app.ts:175:      iv: token.accessIv,
+apps/api/src/app.ts:176:      authTag: token.accessAuthTag,
+apps/api/src/app.ts:177:      keyVersion: token.keyVersion
+apps/api/src/app.ts:179:    const refreshToken = token.refreshCiphertext
+apps/api/src/app.ts:181:          ciphertext: token.refreshCiphertext,
+apps/api/src/app.ts:182:          iv: token.refreshIv ?? "",
+apps/api/src/app.ts:183:          authTag: token.refreshAuthTag ?? "",
+apps/api/src/app.ts:184:          keyVersion: token.keyVersion
+apps/api/src/app.ts:190:      access_token: accessToken,
+apps/api/src/app.ts:191:      refresh_token: refreshToken ?? undefined,
+apps/api/src/app.ts:192:      expiry_date: token.expiresAt.getTime()
+apps/api/src/app.ts:196:    const nextAccessToken = accessResponse.token ?? accessToken;
+apps/api/src/app.ts:202:    if (updatedCreds.access_token && updatedCreds.access_token !== accessToken) {
+apps/api/src/app.ts:207:      const encryptedAccess = encryptPayload(updatedCreds.access_token, activeKeyVersion);
+apps/api/src/app.ts:208:      const nextRefreshToken = updatedCreds.refresh_token ?? refreshToken;
+apps/api/src/app.ts:222:          expiresAt: updatedCreds.expiry_date ? new Date(updatedCreds.expiry_date) : token.expiresAt
+apps/api/src/app.ts:236:    const markdown = entry.summaryMarkdown ?? "";
+apps/api/src/app.ts:238:      await userDriveClient.updateFile({ fileId: entry.driveFileId, content: markdown });
+apps/api/src/app.ts:244:      content: markdown,
+apps/api/src/app.ts:250:  const writeIndexPackToDrive = async (pack: IndexPackRecord, content: string, authClient: GoogleApiClient) => {
+apps/api/src/app.ts:254:      await userDriveClient.updateFile({ fileId: pack.driveFileId, content });
+apps/api/src/app.ts:260:      content,
+apps/api/src/app.ts:303:      const tokens = await googleApi.exchangeCode(client, code);
+apps/api/src/app.ts:305:        access_token: tokens.accessToken,
+apps/api/src/app.ts:306:        refresh_token: tokens.refreshToken ?? undefined,
+apps/api/src/app.ts:307:        expiry_date: tokens.expiryDate ?? undefined
+apps/api/src/app.ts:321:      const accessToken = encryptPayload(tokens.accessToken, activeKeyVersion);
+apps/api/src/app.ts:322:      const refreshToken = tokens.refreshToken
+apps/api/src/app.ts:323:        ? encryptPayload(tokens.refreshToken, activeKeyVersion)
+apps/api/src/app.ts:326:      const tokenRecord: TokenRecord = {
+apps/api/src/app.ts:335:        expiresAt: tokens.expiryDate ? new Date(tokens.expiryDate).toISOString() : now.toISOString()
+apps/api/src/app.ts:342:          accessCiphertext: tokenRecord.encryptedAccessToken,
+apps/api/src/app.ts:343:          accessIv: tokenRecord.accessTokenIv,
+apps/api/src/app.ts:344:          accessAuthTag: tokenRecord.accessTokenAuthTag,
+apps/api/src/app.ts:345:          refreshCiphertext: tokenRecord.encryptedRefreshToken,
+apps/api/src/app.ts:346:          refreshIv: tokenRecord.refreshTokenIv,
+apps/api/src/app.ts:347:          refreshAuthTag: tokenRecord.refreshTokenAuthTag,
+apps/api/src/app.ts:348:          keyVersion: tokenRecord.keyVersion,
+apps/api/src/app.ts:349:          expiresAt: new Date(tokenRecord.expiresAt)
+apps/api/src/app.ts:352:          accessCiphertext: tokenRecord.encryptedAccessToken,
+apps/api/src/app.ts:353:          accessIv: tokenRecord.accessTokenIv,
+apps/api/src/app.ts:354:          accessAuthTag: tokenRecord.accessTokenAuthTag,
+apps/api/src/app.ts:355:          refreshCiphertext: tokenRecord.encryptedRefreshToken,
+apps/api/src/app.ts:356:          refreshIv: tokenRecord.refreshTokenIv,
+apps/api/src/app.ts:357:          refreshAuthTag: tokenRecord.refreshTokenAuthTag,
+apps/api/src/app.ts:358:          keyVersion: tokenRecord.keyVersion,
+apps/api/src/app.ts:359:          expiresAt: new Date(tokenRecord.expiresAt)
+apps/api/src/app.ts:449:      const parsed = EntryCreateSchema.safeParse(req.body ?? {});
+apps/api/src/app.ts:473:          summaryMarkdown: null,
+apps/api/src/app.ts:474:          keyPoints: [],
+apps/api/src/app.ts:529:      const sources = z.array(SourceAttachSchema).safeParse(req.body?.sources ?? []);
+apps/api/src/app.ts:570:      const sourceIds = z.array(z.string()).safeParse(req.body?.sourceIds ?? []);
+apps/api/src/app.ts:620:      const contentBlocks: Array<{ sourceType: string; sourceId: string; text: string }> = [];
+apps/api/src/app.ts:627:          contentBlocks.push({
+apps/api/src/app.ts:638:            contentBlocks.push({
+apps/api/src/app.ts:651:          sendError(res, 400, "limit_exceeded", "Selected content exceeds limits.");
+apps/api/src/app.ts:656:      const promptId = req.body?.promptId?.toString() ?? null;
+apps/api/src/app.ts:657:      const prompt = promptId
+apps/api/src/app.ts:658:        ? await prisma.promptVersion.findUnique({ where: { id: promptId } })
+apps/api/src/app.ts:659:        : await prisma.promptVersion.findFirst({
+apps/api/src/app.ts:660:            where: { key: "summary", active: true, userSelectable: true },
+apps/api/src/app.ts:663:      if (!prompt || !prompt.userSelectable) {
+apps/api/src/app.ts:664:        sendError(res, 400, "prompt_missing", "Prompt version unavailable.");
+apps/api/src/app.ts:668:      const contentPayload = contentBlocks
+apps/api/src/app.ts:672:      let summaryMarkdown = "";
+apps/api/src/app.ts:673:      let keyPoints: string[] = [];
+apps/api/src/app.ts:676:          model: prompt.model,
+apps/api/src/app.ts:677:          maxTokens: prompt.maxTokens,
+apps/api/src/app.ts:679:            { role: "system", content: prompt.content },
+apps/api/src/app.ts:682:              content:
+apps/api/src/app.ts:683:                "Return JSON with fields summaryMarkdown (markdown string) and keyPoints (array of strings).\n\n" +
+apps/api/src/app.ts:684:                contentPayload
+apps/api/src/app.ts:689:          summaryMarkdown?: string;
+apps/api/src/app.ts:690:          keyPoints?: string[];
+apps/api/src/app.ts:692:        summaryMarkdown = parsed.summaryMarkdown ?? "";
+apps/api/src/app.ts:693:        keyPoints = Array.isArray(parsed.keyPoints) ? parsed.keyPoints.map(String) : [];
+apps/api/src/app.ts:699:        sendError(res, 500, "summary_failed", "Summary generation failed.");
+apps/api/src/app.ts:707:          summaryMarkdown,
+apps/api/src/app.ts:708:          keyPoints,
+apps/api/src/app.ts:710:            ...contentBlocks.map((block) => `${block.sourceType}:${block.sourceId}`),
+apps/api/src/app.ts:730:      logEvent("summary_run", {
+apps/api/src/app.ts:786:    "/admin/prompts",
+apps/api/src/app.ts:790:      const prompts = await prisma.promptVersion.findMany({ orderBy: { createdAt: "desc" } });
+apps/api/src/app.ts:791:      res.json({ prompts });
+apps/api/src/app.ts:796:    "/admin/prompts",
+apps/api/src/app.ts:800:      const prompt = await prisma.promptVersion.create({
+apps/api/src/app.ts:803:          key: req.body.key ?? "default",
+apps/api/src/app.ts:804:          version: Number(req.body.version ?? 1),
+apps/api/src/app.ts:805:          content: req.body.content ?? "",
+apps/api/src/app.ts:806:          model: req.body.model ?? "gpt-4o-mini",
+apps/api/src/app.ts:807:          maxTokens: Number(req.body.maxTokens ?? 512),
+apps/api/src/app.ts:809:          userSelectable: Boolean(req.body.userSelectable ?? true),
+apps/api/src/app.ts:813:      res.status(201).json(prompt);
+apps/api/src/app.ts:818:    "/prompts",
+apps/api/src/app.ts:821:      const prompts = await prisma.promptVersion.findMany({
+apps/api/src/app.ts:825:      res.json({ prompts });
+apps/api/src/app.ts:830:    "/admin/prompts/:id/activate",
+apps/api/src/app.ts:834:      const target = await prisma.promptVersion.findUnique({ where: { id: req.params.id } });
+apps/api/src/app.ts:841:        prisma.promptVersion.updateMany({
+apps/api/src/app.ts:845:        prisma.promptVersion.update({
+apps/api/src/app.ts:851:      const updated = await prisma.promptVersion.findUnique({ where: { id: target.id } });
+apps/api/src/app.ts:861:      const promptId = req.body?.promptId?.toString();
+apps/api/src/app.ts:862:      const input = req.body?.input?.toString() ?? "";
+apps/api/src/app.ts:863:      if (!promptId || !input) {
+apps/api/src/app.ts:864:        sendError(res, 400, "invalid_request", "promptId and input are required.");
+apps/api/src/app.ts:867:      const prompt = await prisma.promptVersion.findUnique({ where: { id: promptId } });
+apps/api/src/app.ts:868:      if (!prompt) {
+apps/api/src/app.ts:873:        model: prompt.model,
+apps/api/src/app.ts:874:        maxTokens: prompt.maxTokens,
+apps/api/src/app.ts:876:          { role: "system", content: prompt.content },
+apps/api/src/app.ts:877:          { role: "user", content: input }
+apps/api/src/app.ts:951:        data: { status: req.body.status ?? pack.status }
+apps/api/src/app.ts:975:      const content = `# Index Pack\n\nEntry count: ${entryCount}`;
+apps/api/src/app.ts:983:        const driveFileId = await writeIndexPackToDrive(updatedPack as IndexPackRecord, content, authClient);
+apps/api/src/app.ts:1009:      const entryIds = z.array(z.string()).safeParse(req.body.entryIds ?? []);
 ```
 
 **Interpretation:** Matches are limited to Drive file content handling, prompt storage, schema definitions, and request body usage. Logging remains restricted by the allowlist in `logger.ts` (see checklist item b).
@@ -163,24 +249,82 @@ rg -n "raw|body|extracted|html|source" apps/api/src apps/api/prisma
 ```
 Output:
 ```
-apps/api/src/drive.ts:181:        body: input.content
-apps/api/src/drive.ts:208:        body: input.content
-apps/api/src/app.ts:201:    res.json({ results: [], source: "gmail", metadataOnly: true });
-apps/api/src/app.ts:205:    res.json({ results: [], source: "drive", metadataOnly: true });
-apps/api/src/app.ts:231:          title: req.body.title ?? "Untitled",
-apps/api/src/app.ts:377:          key: req.body.key ?? "default",
-apps/api/src/app.ts:378:          version: Number(req.body.version ?? 1),
-apps/api/src/app.ts:379:          content: req.body.content ?? "",
-apps/api/src/app.ts:381:          userSelectable: Boolean(req.body.userSelectable ?? true),
-apps/api/src/app.ts:491:        data: { status: req.body.status ?? pack.status }
-apps/api/src/app.ts:543:      const entryIds = z.array(z.string()).safeParse(req.body.entryIds ?? []);
 apps/api/src/types/externals.d.ts:8:      body: any;
-apps/api/src/types/externals.d.ts:14:      json: (body: any) => Response;
+apps/api/src/types/externals.d.ts:15:      json: (body: any) => Response;
+apps/api/src/openai.ts:47:        body: JSON.stringify({
+apps/api/src/types.ts:27:  sourceType: "gmail" | "drive";
+apps/api/src/types.ts:28:  sourceId: string;
+apps/api/src/googleApi.ts:105:    if (!part?.mimeType || !part?.body?.data) {
+apps/api/src/googleApi.ts:109:      collector.push(decodeBase64Url(part.body.data));
+apps/api/src/googleApi.ts:110:    } else if (part.mimeType === "text/html") {
+apps/api/src/googleApi.ts:111:      collector.push(stripHtml(decodeBase64Url(part.body.data)));
+apps/api/src/googleApi.ts:310:    if (payload?.body?.data) {
+apps/api/src/googleApi.ts:311:      textParts.push(decodeBase64Url(payload.body.data));
+apps/api/src/drive.ts:169:        body: input.content
+apps/api/src/drive.ts:196:        body: input.content
+apps/api/src/app.ts:39:  sourceType: z.enum(["gmail", "drive"]),
+apps/api/src/app.ts:40:  sourceId: z.string(),
+apps/api/src/app.ts:404:      res.json({ results, nextPageToken, source: "gmail", metadataOnly: true });
+apps/api/src/app.ts:427:      res.json({ results, nextPageToken, source: "drive", metadataOnly: true });
+apps/api/src/app.ts:449:      const parsed = EntryCreateSchema.safeParse(req.body ?? {});
+apps/api/src/app.ts:494:        include: { sourceRefs: true }
+apps/api/src/app.ts:505:    "/entries/:id/sources",
+apps/api/src/app.ts:515:      res.json({ sources: refs });
+apps/api/src/app.ts:520:    "/entries/:id/sources",
+apps/api/src/app.ts:529:      const sources = z.array(SourceAttachSchema).safeParse(req.body?.sources ?? []);
+apps/api/src/app.ts:530:      if (!sources.success || sources.data.length === 0) {
+apps/api/src/app.ts:535:      for (const source of sources.data) {
+apps/api/src/app.ts:540:            sourceType: source.sourceType,
+apps/api/src/app.ts:541:            sourceId: source.sourceId,
+apps/api/src/app.ts:542:            subject: source.subject ?? null,
+apps/api/src/app.ts:543:            from: source.from ?? null,
+apps/api/src/app.ts:544:            date: source.date ?? null,
+apps/api/src/app.ts:545:            name: source.name ?? null,
+apps/api/src/app.ts:546:            mimeType: source.mimeType ?? null,
+apps/api/src/app.ts:547:            createdTime: source.createdTime ?? null,
+apps/api/src/app.ts:548:            modifiedTime: source.modifiedTime ?? null,
+apps/api/src/app.ts:549:            size: source.size ?? null,
+apps/api/src/app.ts:550:            internalDate: source.internalDate ?? null,
+apps/api/src/app.ts:556:      res.status(201).json({ sources: created });
+apps/api/src/app.ts:561:    "/entries/:id/sources",
+apps/api/src/app.ts:570:      const sourceIds = z.array(z.string()).safeParse(req.body?.sourceIds ?? []);
+apps/api/src/app.ts:571:      if (!sourceIds.success || sourceIds.data.length === 0) {
+apps/api/src/app.ts:572:        sendError(res, 400, "invalid_request", "sourceIds required.");
+apps/api/src/app.ts:576:        where: { entryId: entry.id, id: { in: sourceIds.data } }
+apps/api/src/app.ts:605:      const sourceRefs = await prisma.entrySourceRef.findMany({ where: { entryId: entry.id } });
+apps/api/src/app.ts:606:      if (sourceRefs.length === 0) {
+apps/api/src/app.ts:607:        sendError(res, 400, "invalid_request", "No sources selected.");
+apps/api/src/app.ts:610:      if (sourceRefs.length > MAX_SOURCE_COUNT) {
+apps/api/src/app.ts:615:        sendError(res, 400, "limit_exceeded", "Too many sources selected.");
+apps/api/src/app.ts:620:      const contentBlocks: Array<{ sourceType: string; sourceId: string; text: string }> = [];
+apps/api/src/app.ts:623:      for (const source of sourceRefs) {
+apps/api/src/app.ts:624:        if (source.sourceType === "gmail") {
+apps/api/src/app.ts:625:          const gmail = await googleApi.fetchGmailMessage(authClient, source.sourceId);
+apps/api/src/app.ts:628:            sourceType: "gmail",
+apps/api/src/app.ts:629:            sourceId: source.sourceId,
+apps/api/src/app.ts:632:        } else if (source.sourceType === "drive") {
+apps/api/src/app.ts:633:          const drive = await googleApi.fetchDriveFile(authClient, source.sourceId, source.mimeType);
+apps/api/src/app.ts:635:            warnings.push(`warning:drive:${source.sourceId}:${drive.reason ?? "skipped"}`);
+apps/api/src/app.ts:639:              sourceType: "drive",
+apps/api/src/app.ts:640:              sourceId: source.sourceId,
+apps/api/src/app.ts:656:      const promptId = req.body?.promptId?.toString() ?? null;
+apps/api/src/app.ts:669:        .map((block, index) => `Source ${index + 1} (${block.sourceType}:${block.sourceId}):\n${block.text}`)
+apps/api/src/app.ts:710:            ...contentBlocks.map((block) => `${block.sourceType}:${block.sourceId}`),
+apps/api/src/app.ts:803:          key: req.body.key ?? "default",
+apps/api/src/app.ts:804:          version: Number(req.body.version ?? 1),
+apps/api/src/app.ts:805:          content: req.body.content ?? "",
+apps/api/src/app.ts:806:          model: req.body.model ?? "gpt-4o-mini",
+apps/api/src/app.ts:807:          maxTokens: Number(req.body.maxTokens ?? 512),
+apps/api/src/app.ts:809:          userSelectable: Boolean(req.body.userSelectable ?? true),
+apps/api/src/app.ts:861:      const promptId = req.body?.promptId?.toString();
+apps/api/src/app.ts:862:      const input = req.body?.input?.toString() ?? "";
+apps/api/src/app.ts:951:        data: { status: req.body.status ?? pack.status }
+apps/api/src/app.ts:1009:      const entryIds = z.array(z.string()).safeParse(req.body.entryIds ?? []);
 apps/api/prisma/schema.prisma:5:datasource db {
-apps/api/prisma/schema.prisma:64:  sourceRefs      EntrySourceRef[]
-apps/api/prisma/schema.prisma:73:  sourceType String        @map("source_type")
-apps/api/prisma/schema.prisma:74:  sourceId   String        @map("source_id")
-apps/api/prisma/schema.prisma:78:  @@map("entry_source_refs")
+apps/api/prisma/schema.prisma:67:  sourceRefs      EntrySourceRef[]
+apps/api/prisma/schema.prisma:76:  sourceType String        @map("source_type")
+apps/api/prisma/schema.prisma:77:  sourceId   String        @map("source_id")
+apps/api/prisma/schema.prisma:90:  @@map("entry_source_refs")
 ```
 
 **Interpretation:** Matches relate to request body handling, Drive API request bodies, and `EntrySourceRef` metadata fields. No raw content storage fields (e.g., `raw`, `html`, `extracted`) appear in the Prisma schema.

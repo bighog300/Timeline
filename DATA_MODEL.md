@@ -28,17 +28,32 @@
 - status (processing|ready|error)
 - driveWriteStatus (ok|pending|failed)
 - driveFileId
+- startDate
+- endDate (nullable)
+- tags (string array)
 - summaryMarkdown
 - keyPoints (json array)
 - metadataRefs (json array)
 - createdAt
 - updatedAt
 
+## EntrySourceRefs
+- id
+- entryId
+- sourceType (gmail|drive)
+- sourceId (messageId/fileId)
+- subject/from/date (gmail metadata)
+- internalDate (gmail metadata)
+- name/mimeType/createdTime/modifiedTime/size (drive metadata)
+- createdAt
+
 ## Prompts
 - id
 - key
 - version
 - content
+- model
+- maxTokens
 - active (bool)
 - userSelectable (bool)
 - createdAt
@@ -49,4 +64,3 @@
 - driveFileId
 - status
 - createdAt
-

@@ -10,12 +10,32 @@ export type EntryRecord = {
   title: string;
   status: "processing" | "ready" | "error";
   driveWriteStatus: "ok" | "pending" | "failed";
+  startDate: string;
+  endDate: string | null;
+  tags: string[];
   driveFileId: string | null;
   summaryMarkdown: string | null;
   keyPoints: string[];
   metadataRefs: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type EntrySourceRefRecord = {
+  id: string;
+  entryId: string;
+  sourceType: "gmail" | "drive";
+  sourceId: string;
+  subject?: string | null;
+  from?: string | null;
+  date?: string | null;
+  name?: string | null;
+  mimeType?: string | null;
+  createdTime?: string | null;
+  modifiedTime?: string | null;
+  size?: string | null;
+  internalDate?: string | null;
+  createdAt: string;
 };
 
 export type TokenRecord = {
@@ -35,6 +55,8 @@ export type PromptRecord = {
   key: string;
   version: number;
   content: string;
+  model: string;
+  maxTokens: number;
   active: boolean;
   userSelectable: boolean;
   createdAt: string;
