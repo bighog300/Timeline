@@ -178,6 +178,13 @@ const login = async (baseUrl, email) => {
     const detachBody = await detachRes.response.json();
     assert.strictEqual(detachBody.removed, 1);
 
+    const entryBeforeMissingToken = await prisma.timelineEntry.findUnique({
+      where: { id: entry.id }
+    });
+    const artifactsBeforeMissingToken = await prisma.derivedArtifact.count({
+      where: { entryId: entry.id }
+    });
+
     await prisma.googleTokenSet.delete({ where: { userId: runTwoBody.userId } });
     const driveCountsBeforeMissingToken = {
       create: context.driveClient.stats.createCount,
@@ -192,6 +199,19 @@ const login = async (baseUrl, email) => {
     assert.strictEqual(missingTokenBody.error, "reconnect_required");
     assert.strictEqual(context.driveClient.stats.createCount, driveCountsBeforeMissingToken.create);
     assert.strictEqual(context.driveClient.stats.updateCount, driveCountsBeforeMissingToken.update);
+    const entryAfterMissingToken = await prisma.timelineEntry.findUnique({
+      where: { id: entry.id }
+    });
+    const artifactsAfterMissingToken = await prisma.derivedArtifact.count({
+      where: { entryId: entry.id }
+    });
+    assert.strictEqual(entryAfterMissingToken.status, entryBeforeMissingToken.status);
+    assert.strictEqual(entryAfterMissingToken.driveWriteStatus, entryBeforeMissingToken.driveWriteStatus);
+    assert.strictEqual(artifactsAfterMissingToken, artifactsBeforeMissingToken);
+    assert.strictEqual(
+      new Date(entryAfterMissingToken.updatedAt).getTime(),
+      new Date(entryBeforeMissingToken.updatedAt).getTime()
+    );
 
     const adminDenied = await request(baseUrl, "/admin/prompts", { cookie: userCookie });
     assert.strictEqual(adminDenied.response.status, 403);
