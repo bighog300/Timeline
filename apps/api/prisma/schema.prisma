@@ -52,8 +52,11 @@ model TimelineEntry {
   id              String           @id @default(uuid()) @map("id")
   userId          String           @map("user_id")
   title           String           @map("title")
-  status          String           @map("status")
-  driveWriteStatus String          @map("drive_write_status")
+  status          EntryStatus      @map("status")
+  driveWriteStatus DriveWriteStatus @map("drive_write_status")
+  startDate       DateTime         @map("start_date")
+  endDate         DateTime?        @map("end_date")
+  tags            String[]         @map("tags")
   driveFileId     String?          @map("drive_file_id")
   summaryMarkdown String?          @map("summary_markdown")
   keyPoints       String[]         @map("key_points")
@@ -72,6 +75,15 @@ model EntrySourceRef {
   entryId    String        @map("entry_id")
   sourceType String        @map("source_type")
   sourceId   String        @map("source_id")
+  subject    String?       @map("subject")
+  from       String?       @map("from")
+  date       String?       @map("date")
+  name       String?       @map("name")
+  mimeType   String?       @map("mime_type")
+  createdTime String?      @map("created_time")
+  modifiedTime String?     @map("modified_time")
+  size       String?       @map("size")
+  internalDate String?     @map("internal_date")
   createdAt  DateTime      @default(now()) @map("created_at")
   entry      TimelineEntry @relation(fields: [entryId], references: [id])
 
@@ -93,6 +105,8 @@ model PromptVersion {
   key            String   @map("key")
   version        Int      @map("version")
   content        String   @map("content")
+  model          String   @map("model")
+  maxTokens      Int      @map("max_tokens")
   active         Boolean  @default(false) @map("active")
   userSelectable Boolean  @default(true) @map("user_selectable")
   createdAt      DateTime @default(now()) @map("created_at")
@@ -109,4 +123,16 @@ model IndexPack {
   user       User     @relation(fields: [userId], references: [id])
 
   @@map("index_packs")
+}
+
+enum EntryStatus {
+  processing
+  ready
+  error
+}
+
+enum DriveWriteStatus {
+  ok
+  pending
+  failed
 }

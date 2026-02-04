@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { google } from "googleapis";
+import type { GoogleApiClient } from "./googleApi";
 
 export type DriveStats = {
   createCount: number;
@@ -112,22 +113,9 @@ export const createDriveStub = (): DriveClient => {
   return { stats, ensureFolder, ensureTimelineFolders, createFile, updateFile, getFile };
 };
 
-export const createGoogleDriveClient = (): DriveClient => {
+export const createGoogleDriveClient = (auth: GoogleApiClient): DriveClient => {
   const stats: DriveStats = { createCount: 0, updateCount: 0 };
   const now = () => new Date().toISOString();
-
-  const clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!clientEmail || !privateKey) {
-    throw new Error("drive_credentials_missing");
-  }
-
-  const auth = new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey,
-    scopes: ["https://www.googleapis.com/auth/drive.file"]
-  });
 
   const drive = google.drive({ version: "v3", auth });
 
@@ -247,9 +235,12 @@ export const createGoogleDriveClient = (): DriveClient => {
   return { stats, ensureFolder, ensureTimelineFolders, createFile, updateFile, getFile };
 };
 
-export const createDriveClient = () => {
+export const createDriveClient = (options?: { auth?: GoogleApiClient }) => {
   if (process.env.DRIVE_ADAPTER === "google") {
-    return createGoogleDriveClient();
+    if (!options?.auth) {
+      throw new Error("drive_auth_missing");
+    }
+    return createGoogleDriveClient(options.auth);
   }
   return createDriveStub();
 };
