@@ -101,7 +101,7 @@ API (required):
 - `ADMIN_EMAILS` — admin allowlist.
 
 Web (as applicable):
-- `NEXT_PUBLIC_API_BASE_URL` — API base URL for the web app.
+- `NEXT_PUBLIC_API_BASE` — API base URL for the web app (defaults to `/api`).
 - `NEXT_PUBLIC_APP_BASE_URL` — public base URL for the web app.
 
 Do NOT set stub flags in production:
