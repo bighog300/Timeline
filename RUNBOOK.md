@@ -3,6 +3,7 @@
 ## Start API
 - Install dependencies from repo root: `pnpm install`
 - `pnpm --filter ./apps/api dev`
+- Note: `apps/api` dev/test uses `ts-node` (`ts-node/register`) and requires devDependencies to be installed.
 
 ## Start Web
 - `pnpm --filter ./apps/web dev`
@@ -23,16 +24,15 @@
 - Sessions expire based on `SESSION_TTL_MS` (default 7 days).
 - Trigger cleanup with `POST /admin/sessions/cleanup` (no background jobs).
 
-## npm install 403 (Forbidden)
-- Confirm registry is set to the public npm registry:
-  - `.npmrc` in the repo root and `apps/api/.npmrc` should point at `https://registry.npmjs.org/`.
-  - `npm config set registry https://registry.npmjs.org/`
+## pnpm install 403 (Forbidden)
+- Check the active registry: `pnpm config get registry`
+- Confirm the repo `.npmrc` files point at the public registry (`https://registry.npmjs.org/`).
+- Reset to npmjs if needed: `pnpm config set registry https://registry.npmjs.org/`
 - Check for unintended registry overrides:
-  - `.npmrc` in the repo, user home, or environment variables like `NPM_CONFIG_REGISTRY`.
+  - `.npmrc` in the repo or user home, and env vars like `NPM_CONFIG_REGISTRY`.
 - Verify proxy environment variables (such as `http-proxy`/`https-proxy`) are not pointing at a blocked registry.
-- If you are behind a corporate registry, ensure your auth token is valid or temporarily unset the proxy variables.
-- If a global npmrc is forcing a private registry, override with:
-  - `npm --registry=https://registry.npmjs.org/ install`
+- If you are behind a corporate mirror, ensure your auth token is valid or temporarily bypass the mirror for public packages.
+- Optional: run `pnpm preflight` to print detected registry and versions.
 - If access to specific packages is blocked (403 on a public package), use the local workspace fallbacks:
   - `packages/prisma-client` provides a minimal `@prisma/client`.
   - `packages/googleapis` provides a minimal `googleapis`.

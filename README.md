@@ -11,6 +11,12 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
 - `pnpm dev:api`
 - `pnpm dev:web`
 
+## If pnpm install fails with 403
+- Check the active registry: `pnpm config get registry`
+- Point back to npmjs if needed: `pnpm config set registry https://registry.npmjs.org/`
+- Corporate mirrors/proxies may override the registry via `~/.npmrc`, `NPM_CONFIG_REGISTRY`, or proxy env vars; ensure your auth token is valid or temporarily bypass the mirror.
+- Run the preflight helper to confirm versions and registry: `pnpm preflight`
+
 ## Common workspace commands
 - `pnpm test`
 - `pnpm build`
