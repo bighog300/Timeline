@@ -2,7 +2,10 @@
   "name": "timeline-app",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev:api": "pnpm --filter ./apps/api dev",
     "dev:web": "pnpm --filter ./apps/web dev",

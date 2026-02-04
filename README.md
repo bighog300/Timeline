@@ -11,6 +11,14 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
 - `pnpm dev:api`
 - `pnpm dev:web`
 
+## Vercel deployment notes
+- Vercel requires **Node 20.x**. This repo pins it via `.nvmrc` and `.node-version`.
+- If Vercel `pnpm install` fails with `ERR_INVALID_THIS`, ensure pnpm v9 is pinned via the root `packageManager` field.
+- Recommended Vercel project settings:
+  - **Root Directory:** `apps/web`
+  - **Install Command:** `pnpm install`
+  - **Build Command:** `pnpm run build`
+
 ## If pnpm install fails with 403
 - Check the active registry: `pnpm config get registry`
 - Point back to npmjs if needed: `pnpm config set registry https://registry.npmjs.org/`

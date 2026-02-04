@@ -41,6 +41,14 @@
 
 ## Production Deployment
 
+### Vercel-specific requirements
+- Vercel requires **Node 20.x**. This repo pins it via `.nvmrc` and `.node-version`.
+- If Vercel `pnpm install` fails with `ERR_INVALID_THIS`, ensure pnpm v9 is pinned via the root `packageManager` field.
+- Recommended Vercel project settings for the web app:
+  - **Root Directory:** `apps/web`
+  - **Install Command:** `pnpm install`
+  - **Build Command:** `pnpm run build`
+
 ### 1) Deployment model (important)
 - Production deployments MUST install and build **from service directories**, not from the repo root.
 - Do NOT deploy using root workspaces.
