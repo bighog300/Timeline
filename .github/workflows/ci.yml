@@ -9,6 +9,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
     env:
       NODE_ENV: development
       SESSION_SECRET: ci-session-secret-32-chars-minimum
@@ -20,13 +23,43 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - name: Read pnpm version
+        id: pnpm-version
+        run: echo "version=$(node -p \"require('./package.json').packageManager.split('@')[1]\")" >> "$GITHUB_OUTPUT"
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.pnpm-version.outputs.version }}
+          run_install: false
+      - name: Show versions
+        run: |
+          node --version
+          pnpm --version
+      - name: Show pnpm registry
+        run: pnpm config get registry
+      - name: Preflight
+        run: pnpm preflight
       - name: Install dependencies
-        run: npm install
-      - name: Test API
-        run: npm test -w apps/api
-      - name: Build API
-        run: npm run build -w apps/api
-      - name: Build Web
-        run: npm run build -w apps/web
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Test
+        run: pnpm test
+      - name: Lint (if present)
+        run: |
+          if pnpm -s run | grep -q "^lint"; then
+            pnpm lint
+          else
+            echo "lint script not found; skipping."
+          fi
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-artifacts-node-${{ matrix.node-version }}
+          path: |
+            **/test-results/**
+            **/coverage/**
+          if-no-files-found: ignore
