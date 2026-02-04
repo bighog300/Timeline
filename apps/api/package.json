@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "SHIM_ALLOW=1 ts-node src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "node -r ts-node/register tests/acceptance.test.js"
+    "test": "node -r ts-node/register tests/acceptance.test.js && node -r ts-node/register tests/unit.test.js"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",

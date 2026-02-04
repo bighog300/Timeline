@@ -3,6 +3,26 @@ import type { PrismaClient } from "@prisma/client";
 import type { SessionData } from "./types";
 
 const sessionTtlMs = Number(process.env.SESSION_TTL_MS ?? 1000 * 60 * 60 * 24 * 7);
+const minSessionSecretLength = 32;
+
+export const getSessionSecret = () => {
+  const rawSecret = process.env.SESSION_SECRET ?? "";
+  const normalizedSecret = rawSecret.trim();
+  const isProduction = process.env.NODE_ENV === "production";
+  const isValid =
+    normalizedSecret.length >= minSessionSecretLength && normalizedSecret !== "dev-secret";
+
+  if (isProduction) {
+    if (!isValid) {
+      throw new Error(
+        "Production requires SESSION_SECRET (>= 32 chars) and must not be 'dev-secret'."
+      );
+    }
+    return normalizedSecret;
+  }
+
+  return normalizedSecret || "dev-secret";
+};
 
 const buildExpiresAt = (sessionData: session.SessionData) => {
   if (sessionData.cookie?.expires) {

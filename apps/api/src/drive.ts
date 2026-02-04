@@ -17,12 +17,12 @@ export type DriveFolder = {
 export type DriveFile = {
   id: string;
   name: string;
-  parentId: string;
+  parentId: string | null;
   mimeType: string;
   content: string;
   createdAt: string;
   updatedAt: string;
-  version: number;
+  version: number | null;
 };
 
 export type DriveClient = {
@@ -103,7 +103,7 @@ export const createDriveStub = (): DriveClient => {
     }
     file.content = input.content;
     file.updatedAt = now();
-    file.version += 1;
+    file.version = (file.version ?? 0) + 1;
     stats.updateCount += 1;
     return file;
   };
@@ -118,6 +118,13 @@ export const createGoogleDriveClient = (auth: GoogleApiClient): DriveClient => {
   const now = () => new Date().toISOString();
 
   const drive = google.drive({ version: "v3", auth });
+  const parseVersion = (value: string | number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const numeric = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
 
   const ensureFolder = async (name: string, parentId: string) => {
     const result = await drive.files.list({
@@ -168,7 +175,7 @@ export const createGoogleDriveClient = (auth: GoogleApiClient): DriveClient => {
         mimeType: input.mimeType,
         body: input.content
       },
-      fields: "id, name, mimeType, createdTime, modifiedTime"
+      fields: "id, parents, version, name, mimeType, createdTime, modifiedTime"
     });
 
     if (!created.data.id) {
@@ -179,12 +186,12 @@ export const createGoogleDriveClient = (auth: GoogleApiClient): DriveClient => {
     return {
       id: created.data.id,
       name: created.data.name ?? input.name,
-      parentId: input.parentId,
+      parentId: created.data.parents?.[0] ?? input.parentId ?? null,
       mimeType: created.data.mimeType ?? input.mimeType,
       content: input.content,
       createdAt: created.data.createdTime ?? now(),
       updatedAt: created.data.modifiedTime ?? now(),
-      version: 1
+      version: parseVersion(created.data.version)
     };
   };
 
@@ -195,7 +202,7 @@ export const createGoogleDriveClient = (auth: GoogleApiClient): DriveClient => {
         mimeType: "text/markdown",
         body: input.content
       },
-      fields: "id, name, mimeType, createdTime, modifiedTime"
+      fields: "id, parents, version, name, mimeType, createdTime, modifiedTime"
     });
 
     if (!updated.data.id) {
@@ -206,29 +213,32 @@ export const createGoogleDriveClient = (auth: GoogleApiClient): DriveClient => {
     return {
       id: updated.data.id,
       name: updated.data.name ?? "",
-      parentId: "",
+      parentId: updated.data.parents?.[0] ?? null,
       mimeType: updated.data.mimeType ?? "text/markdown",
       content: input.content,
       createdAt: updated.data.createdTime ?? now(),
       updatedAt: updated.data.modifiedTime ?? now(),
-      version: 1
+      version: parseVersion(updated.data.version)
     };
   };
 
   const getFile = async (fileId: string) => {
-    const file = await drive.files.get({ fileId, fields: "id, name, parents, mimeType, createdTime, modifiedTime" });
+    const file = await drive.files.get({
+      fileId,
+      fields: "id, name, parents, mimeType, createdTime, modifiedTime, version"
+    });
     if (!file.data.id) {
       return undefined;
     }
     return {
       id: file.data.id,
       name: file.data.name ?? "",
-      parentId: file.data.parents?.[0] ?? "",
+      parentId: file.data.parents?.[0] ?? null,
       mimeType: file.data.mimeType ?? "",
       content: "",
       createdAt: file.data.createdTime ?? now(),
       updatedAt: file.data.modifiedTime ?? now(),
-      version: 1
+      version: parseVersion(file.data.version)
     };
   };
 
