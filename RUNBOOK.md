@@ -1,11 +1,11 @@
 # Runbook
 
 ## Start API
-- Install dependencies
-- `npm run dev -w apps/api`
+- Install dependencies from repo root: `pnpm install`
+- `pnpm --filter ./apps/api dev`
 
 ## Start Web
-- `npm run dev -w apps/web`
+- `pnpm --filter ./apps/web dev`
 - Ensure `API_SERVER_ORIGIN` points at the API (dev: `http://localhost:3001`).
 
 ## OAuth Issues
@@ -51,10 +51,12 @@
 ### 2) API service deployment steps
 Example (shell-style, platform-agnostic):
 - `cd apps/api`
-- `npm install`
+- `pnpm install`
 - `npx prisma migrate deploy`
-- `npm run build`
-- `npm run start` (or equivalent)
+- `pnpm run build`
+- `pnpm run start` (or equivalent)
+
+If you must use npm instead of pnpm, use the equivalent `npm install`, `npm run build`, and `npm run start` commands.
 
 Notes:
 - `NODE_ENV=production` is required.
@@ -64,9 +66,11 @@ Notes:
 ### 3) Web service deployment steps
 Example (shell-style, platform-agnostic):
 - `cd apps/web`
-- `npm install`
-- `npm run build`
-- `npm run start` (or equivalent)
+- `pnpm install`
+- `pnpm run build`
+- `pnpm run start` (or equivalent)
+
+If you must use npm instead of pnpm, use the equivalent `npm install`, `npm run build`, and `npm run start` commands.
 
 Notes:
 - Web talks to API via configured base URL or rewrites.

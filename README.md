@@ -11,6 +11,11 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
 - `pnpm dev:api`
 - `pnpm dev:web`
 
+## Common workspace commands
+- `pnpm test`
+- `pnpm build`
+- `pnpm lint`
+
 ## Documentation
 - [PRD.md](PRD.md)
 - [RUNBOOK.md](RUNBOOK.md)
