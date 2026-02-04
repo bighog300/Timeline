@@ -20,6 +20,14 @@ const envSchema = z.object({
     .positive()
     .default(5 * 1024 * 1024),
   INDEX_MAX_CHUNKS_PER_FILE: z.coerce.number().int().positive().default(200),
+  INGEST_MAX_FILES_PER_RUN: z.coerce.number().int().positive().default(10),
+  INGEST_MAX_BYTES_PER_RUN: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024),
+  CHUNK_MAX_CHARS: z.coerce.number().int().positive().default(1500),
+  CHUNK_OVERLAP_CHARS: z.coerce.number().int().nonnegative().default(200),
   OPENAI_API_KEY: z.string().min(1).optional(),
 });
 
