@@ -5,6 +5,8 @@ import { getEnv } from "../../../../../src/env";
 import { prisma } from "../../../../../src/server/db/prisma";
 import { createSession } from "../../../../../src/server/auth/session";
 import { encryptString } from "../../../../../src/server/crypto/encryption";
+import { ValidationError } from "../../../../../src/server/errors";
+import { withApiHandler } from "../../../../../src/server/http";
 
 const STATE_COOKIE_NAME = "__Host-timeline-google-oauth-state";
 
@@ -65,113 +67,108 @@ const fetchGoogleUser = async (accessToken: string) => {
   return (await response.json()) as GoogleUserInfo;
 };
 
-export const GET = async (request: Request) => {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  const storedState = cookies().get(STATE_COOKIE_NAME)?.value;
+export const GET = withApiHandler(
+  "/api/auth/google/callback",
+  async ({ request, setUserId }) => {
+    const url = new URL(request.url);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    const storedState = cookies().get(STATE_COOKIE_NAME)?.value;
 
-  if (!code || !state || !storedState || state !== storedState) {
-    return NextResponse.json({ error: "Invalid OAuth state." }, { status: 400 });
-  }
+    if (!code || !state || !storedState || state !== storedState) {
+      throw new ValidationError("Invalid OAuth state.");
+    }
 
-  cookies().set(STATE_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+    cookies().set(STATE_COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
 
-  const env = getEnv();
-  const redirectUrl = new URL(env.GOOGLE_OAUTH_REDIRECT_URI);
-  const baseUrl = new URL(env.APP_BASE_URL);
+    const env = getEnv();
+    const redirectUrl = new URL(env.GOOGLE_OAUTH_REDIRECT_URI);
+    const baseUrl = new URL(env.APP_BASE_URL);
 
-  if (redirectUrl.origin !== baseUrl.origin) {
-    return NextResponse.json(
-      { error: "OAuth redirect URI mismatch." },
-      { status: 500 },
-    );
-  }
+    if (redirectUrl.origin !== baseUrl.origin) {
+      throw new ValidationError("OAuth redirect URI mismatch.");
+    }
 
-  const tokenResponse = await exchangeCodeForToken(code);
-  if (!tokenResponse?.access_token) {
-    return NextResponse.json(
-      { error: "OAuth token exchange failed." },
-      { status: 400 },
-    );
-  }
+    const tokenResponse = await exchangeCodeForToken(code);
+    if (!tokenResponse?.access_token) {
+      throw new ValidationError("OAuth token exchange failed.");
+    }
 
-  const userInfo = await fetchGoogleUser(tokenResponse.access_token);
-  if (!userInfo?.email) {
-    return NextResponse.json(
-      { error: "Unable to fetch Google profile." },
-      { status: 400 },
-    );
-  }
+    const userInfo = await fetchGoogleUser(tokenResponse.access_token);
+    if (!userInfo?.email) {
+      throw new ValidationError("Unable to fetch Google profile.");
+    }
 
-  const user = await prisma.user.upsert({
-    where: {
-      email: userInfo.email,
-    },
-    update: {
-      name: userInfo.name ?? undefined,
-      image: userInfo.picture ?? undefined,
-    },
-    create: {
-      email: userInfo.email,
-      name: userInfo.name ?? null,
-      image: userInfo.picture ?? null,
-    },
-  });
-
-  const tokenExpiry = tokenResponse.expires_in
-    ? new Date(Date.now() + tokenResponse.expires_in * 1000)
-    : null;
-  const scopes = tokenResponse.scope ?? env.GOOGLE_OAUTH_SCOPES;
-
-  if (tokenResponse.refresh_token) {
-    await prisma.driveConnection.upsert({
+    const user = await prisma.user.upsert({
       where: {
-        userId_provider: {
+        email: userInfo.email,
+      },
+      update: {
+        name: userInfo.name ?? undefined,
+        image: userInfo.picture ?? undefined,
+      },
+      create: {
+        email: userInfo.email,
+        name: userInfo.name ?? null,
+        image: userInfo.picture ?? null,
+      },
+    });
+    setUserId(user.id);
+
+    const tokenExpiry = tokenResponse.expires_in
+      ? new Date(Date.now() + tokenResponse.expires_in * 1000)
+      : null;
+    const scopes = tokenResponse.scope ?? env.GOOGLE_OAUTH_SCOPES;
+
+    if (tokenResponse.refresh_token) {
+      await prisma.driveConnection.upsert({
+        where: {
+          userId_provider: {
+            userId: user.id,
+            provider: "google",
+          },
+        },
+        update: {
+          scopes,
+          refreshTokenEncrypted: encryptString(tokenResponse.refresh_token),
+          accessTokenEncrypted: tokenResponse.access_token
+            ? encryptString(tokenResponse.access_token)
+            : undefined,
+          tokenExpiry: tokenExpiry ?? undefined,
+        },
+        create: {
+          userId: user.id,
+          provider: "google",
+          scopes,
+          refreshTokenEncrypted: encryptString(tokenResponse.refresh_token),
+          accessTokenEncrypted: tokenResponse.access_token
+            ? encryptString(tokenResponse.access_token)
+            : undefined,
+          tokenExpiry: tokenExpiry ?? undefined,
+        },
+      });
+    } else if (tokenResponse.access_token) {
+      await prisma.driveConnection.updateMany({
+        where: {
           userId: user.id,
           provider: "google",
         },
-      },
-      update: {
-        scopes,
-        refreshTokenEncrypted: encryptString(tokenResponse.refresh_token),
-        accessTokenEncrypted: tokenResponse.access_token
-          ? encryptString(tokenResponse.access_token)
-          : undefined,
-        tokenExpiry: tokenExpiry ?? undefined,
-      },
-      create: {
-        userId: user.id,
-        provider: "google",
-        scopes,
-        refreshTokenEncrypted: encryptString(tokenResponse.refresh_token),
-        accessTokenEncrypted: tokenResponse.access_token
-          ? encryptString(tokenResponse.access_token)
-          : undefined,
-        tokenExpiry: tokenExpiry ?? undefined,
-      },
-    });
-  } else if (tokenResponse.access_token) {
-    await prisma.driveConnection.updateMany({
-      where: {
-        userId: user.id,
-        provider: "google",
-      },
-      data: {
-        scopes,
-        accessTokenEncrypted: encryptString(tokenResponse.access_token),
-        tokenExpiry: tokenExpiry ?? undefined,
-      },
-    });
-  }
+        data: {
+          scopes,
+          accessTokenEncrypted: encryptString(tokenResponse.access_token),
+          tokenExpiry: tokenExpiry ?? undefined,
+        },
+      });
+    }
 
-  await createSession(user.id);
+    await createSession(user.id);
 
-  return NextResponse.redirect(new URL("/", env.APP_BASE_URL));
-};
+    return NextResponse.redirect(new URL("/", env.APP_BASE_URL));
+  },
+);

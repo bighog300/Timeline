@@ -1,4 +1,5 @@
 import { prisma } from "../db/prisma";
+import { AuthError } from "../errors";
 import { clearSessionCookie, getSessionId, setSessionCookie } from "./cookies";
 
 const SESSION_TTL_DAYS = 30;
@@ -49,6 +50,14 @@ export const getCurrentUser = async () => {
   }
 
   return session.user;
+};
+
+export const requireCurrentUser = async () => {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new AuthError();
+  }
+  return user;
 };
 
 export const destroySession = async (sessionId?: string | null) => {

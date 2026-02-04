@@ -19,6 +19,8 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
   - **Root Directory:** `apps/web`
   - **Install Command:** `pnpm install --frozen-lockfile`
   - **Build Command:** `pnpm -w --filter @timeline/web build`
+- App Router route handlers should stay under the default Vercel timeout; long-running indexing/ingest runs are capped by per-run limits.
+- Expect cold starts after inactivity; structured JSON logs are emitted per request for debugging.
 
 ## If pnpm install fails with 403
 - Check the active registry: `pnpm config get registry`
@@ -48,3 +50,27 @@ Timeline App is a privacy-first, explicit-only timeline builder where Google Dri
   - `EMBEDDING_MODEL` (defaults to `text-embedding-3-small`)
   - `EMBED_MAX_CHUNKS_PER_RUN` (defaults to `50`)
 - If your local Postgres instance does not include pgvector, install it before running migrations.
+
+## Quotas & rate limits (Phase 8)
+- Quotas are enforced per user and reset daily (UTC).
+- Limits are configurable via env:
+  - `MAX_SEARCHES_PER_DAY` (default `200`)
+  - `MAX_EMBED_CHUNKS_PER_DAY` (default `2000`)
+  - `MAX_CHAT_MESSAGES_PER_DAY` (default `100`)
+  - `MAX_LLM_TOKENS_PER_DAY` (default `200000`, estimated)
+- When a limit is exceeded, API responses return HTTP `429` with:
+  ```json
+  { "error": "quota_exceeded", "limit": 100, "remaining": 0 }
+  ```
+- Wait for the next daily reset (UTC) or raise the limit in the environment configuration.
+- If a user hits limits, lower per-run settings (e.g. `EMBED_MAX_CHUNKS_PER_RUN`) or raise the daily quotas.
+
+## Feature flags & kill switches (Phase 8)
+- Disable pipelines by setting env flags:
+  - `FEATURE_DRIVE_INDEXING_ENABLED=false`
+  - `FEATURE_EMBEDDINGS_ENABLED=false`
+  - `FEATURE_CHAT_ENABLED=false`
+- Disabled features return a clear error response with `error: "feature_disabled"`.
+
+## Admin diagnostics (Phase 8)
+- `GET /api/admin/health` is restricted to `ADMIN_EMAILS` and returns counts, recent error stats, and the caller's quota usage.

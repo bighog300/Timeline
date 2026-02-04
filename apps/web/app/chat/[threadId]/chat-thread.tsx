@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { getCsrfToken } from "../../../src/client/csrf";
+
 export type ChatCitation = {
   driveFileRefId: string;
   driveFileName: string;
@@ -66,7 +68,10 @@ export const ChatThread = ({ threadId, initialMessages }: Props) => {
     try {
       const response = await fetch(`/api/chat/thread/${threadId}/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": getCsrfToken() ?? "",
+        },
         body: JSON.stringify({ content: trimmed }),
       });
       const data = (await response.json()) as SendMessageResponse;

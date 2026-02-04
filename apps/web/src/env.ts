@@ -33,6 +33,14 @@ const envSchema = z.object({
   EMBEDDING_MODEL: z.string().min(1).default("text-embedding-3-small"),
   EMBED_MAX_CHUNKS_PER_RUN: z.coerce.number().int().positive().default(50),
   EMBED_MAX_TOKENS_PER_RUN: z.coerce.number().int().positive().optional(),
+  MAX_SEARCHES_PER_DAY: z.coerce.number().int().positive().default(200),
+  MAX_EMBED_CHUNKS_PER_DAY: z.coerce.number().int().positive().default(2000),
+  MAX_CHAT_MESSAGES_PER_DAY: z.coerce.number().int().positive().default(100),
+  MAX_LLM_TOKENS_PER_DAY: z.coerce.number().int().positive().default(200000),
+  FEATURE_DRIVE_INDEXING_ENABLED: z.coerce.boolean().default(true),
+  FEATURE_EMBEDDINGS_ENABLED: z.coerce.boolean().default(true),
+  FEATURE_CHAT_ENABLED: z.coerce.boolean().default(true),
+  ADMIN_EMAILS: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

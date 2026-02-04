@@ -1,3 +1,5 @@
+import { ExternalApiError } from "../errors";
+import { logTiming } from "../logging";
 import { getGoogleDriveAccessToken } from "./oauth";
 
 export type DriveFile = {
@@ -37,14 +39,16 @@ export const listDriveFiles = async ({
   userId,
   pageToken,
   pageSize,
+  requestId,
 }: {
   userId: string;
   pageToken?: string | null;
   pageSize: number;
+  requestId?: string;
 }) => {
   const accessToken = await getGoogleDriveAccessToken(userId);
   if (!accessToken) {
-    throw new Error("Missing Google Drive connection.");
+    throw new ExternalApiError("Missing Google Drive connection.");
   }
 
   const url = new URL("https://www.googleapis.com/drive/v3/files");
@@ -57,6 +61,7 @@ export const listDriveFiles = async ({
     url.searchParams.set("pageToken", pageToken);
   }
 
+  const startTime = Date.now();
   const response = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -64,10 +69,17 @@ export const listDriveFiles = async ({
   });
 
   if (!response.ok) {
-    throw new Error("Unable to list Google Drive files.");
+    throw new ExternalApiError("Unable to list Google Drive files.");
   }
 
   const data = (await response.json()) as DriveListResponse;
+  logTiming({
+    requestId,
+    userId,
+    route: "/api/index/run",
+    operation: "drive_list_files",
+    durationMs: Date.now() - startTime,
+  });
   return {
     files: data.files ?? [],
     nextPageToken: data.nextPageToken ?? null,
@@ -77,7 +89,7 @@ export const listDriveFiles = async ({
 const getDriveApiHeaders = async (userId: string) => {
   const accessToken = await getGoogleDriveAccessToken(userId);
   if (!accessToken) {
-    throw new Error("Missing Google Drive connection.");
+    throw new ExternalApiError("Missing Google Drive connection.");
   }
   return {
     Authorization: `Bearer ${accessToken}`,
@@ -92,10 +104,12 @@ export const fetchDriveFileText = async ({
   userId,
   driveFileId,
   mimeType,
+  requestId,
 }: {
   userId: string;
   driveFileId: string;
   mimeType: string;
+  requestId?: string;
 }): Promise<DriveTextResult> => {
   if (mimeType === "application/vnd.google-apps.spreadsheet") {
     return { status: "skipped", reason: "Sheets ingestion pending." };
@@ -114,12 +128,21 @@ export const fetchDriveFileText = async ({
     );
     url.searchParams.set("mimeType", DRIVE_EXPORT_TEXT_MIME);
     url.searchParams.set("supportsAllDrives", "true");
+    const startTime = Date.now();
     const response = await fetch(url.toString(), { headers });
     if (!response.ok) {
-      throw new Error("Unable to export Google Doc.");
+      throw new ExternalApiError("Unable to export Google Doc.");
     }
     const text = await response.text();
     const bytes = Buffer.byteLength(text, "utf8");
+    logTiming({
+      requestId,
+      userId,
+      route: "/api/ingest/run",
+      operation: "drive_export_doc",
+      durationMs: Date.now() - startTime,
+      metadata: { bytes },
+    });
     return { status: "ok", text, bytes };
   }
 
@@ -129,12 +152,21 @@ export const fetchDriveFileText = async ({
     );
     url.searchParams.set("alt", "media");
     url.searchParams.set("supportsAllDrives", "true");
+    const startTime = Date.now();
     const response = await fetch(url.toString(), { headers });
     if (!response.ok) {
-      throw new Error("Unable to download text file.");
+      throw new ExternalApiError("Unable to download text file.");
     }
     const buffer = Buffer.from(await response.arrayBuffer());
     const text = buffer.toString("utf8");
+    logTiming({
+      requestId,
+      userId,
+      route: "/api/ingest/run",
+      operation: "drive_download_text",
+      durationMs: Date.now() - startTime,
+      metadata: { bytes: buffer.byteLength },
+    });
     return { status: "ok", text, bytes: buffer.byteLength };
   }
 

@@ -1,4 +1,6 @@
 import { getEnv } from "../../env";
+import { ExternalApiError } from "../errors";
+import { logTiming } from "../logging";
 
 export type Citation = {
   driveFileRefId: string;
@@ -85,11 +87,13 @@ export const generateAnswer = async (params: {
   query: string;
   contextChunks: ContextChunk[];
   conversation: ConversationMessage[];
+  requestContext?: { requestId?: string; userId?: string; route?: string };
 }): Promise<{ answer: string; citations: Citation[] }> => {
   const env = getEnv();
   const citations = buildCitations(params.contextChunks);
   const contextBlock = buildContextBlock(citations);
   const trimmedConversation = trimConversation(params.conversation);
+  const startTime = Date.now();
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -119,7 +123,7 @@ export const generateAnswer = async (params: {
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(
+    throw new ExternalApiError(
       `OpenAI chat completion failed (${response.status}): ${message || response.statusText}`,
     );
   }
@@ -127,6 +131,14 @@ export const generateAnswer = async (params: {
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
+
+  logTiming({
+    requestId: params.requestContext?.requestId,
+    userId: params.requestContext?.userId,
+    route: params.requestContext?.route,
+    operation: "llm_chat_completion",
+    durationMs: Date.now() - startTime,
+  });
 
   const answer = payload.choices?.[0]?.message?.content?.trim() ?? "";
 

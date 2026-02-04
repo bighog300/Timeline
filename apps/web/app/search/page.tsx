@@ -2,6 +2,8 @@
 
 import { type FormEvent, useState } from "react";
 
+import { getCsrfToken } from "../../src/client/csrf";
+
 type SearchResult = {
   score: number;
   driveFileRefId: string;
@@ -36,7 +38,10 @@ export default function SearchPage() {
     try {
       const response = await fetch("/api/search", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": getCsrfToken() ?? "",
+        },
         body: JSON.stringify({ query: trimmed, limit: 10 }),
       });
       const data = (await response.json()) as SearchResponse;

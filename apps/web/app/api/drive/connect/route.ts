@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser } from "../../../../src/server/auth/session";
+import { requireCurrentUser } from "../../../../src/server/auth/session";
+import { ValidationError } from "../../../../src/server/errors";
+import { withApiHandler } from "../../../../src/server/http";
+import { assertCsrfToken } from "../../../../src/server/security/csrf";
 import { getDriveConnection } from "../../../../src/server/google/oauth";
 
-export const POST = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+export const POST = withApiHandler("/api/drive/connect", async ({ request, setUserId }) => {
+  await assertCsrfToken(request);
+
+  const user = await requireCurrentUser();
+  setUserId(user.id);
 
   const connection = await getDriveConnection(user.id);
   if (!connection) {
-    return NextResponse.json(
-      { error: "Drive connection not found. Re-authenticate first." },
-      { status: 400 },
-    );
+    throw new ValidationError("Drive connection not found. Re-authenticate first.");
   }
 
   return NextResponse.json({ ok: true });
-};
+});
