@@ -12,6 +12,7 @@
     "preflight": "node scripts/preflight.mjs",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
+    "build:web": "pnpm --filter ./apps/web build",
     "lint": "pnpm -r --if-present lint"
   }
 }
