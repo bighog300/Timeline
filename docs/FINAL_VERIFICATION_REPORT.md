@@ -5,7 +5,7 @@
 | Command | Result | Notes |
 | --- | --- | --- |
 | `npm install` | ✅ Pass | Warning: `npm warn Unknown env config "http-proxy"` appeared in output. |
-| `npm test -w apps/api` | ✅ Pass | Acceptance tests completed successfully. |
+| `npm test -w apps/api` | ✅ Pass | Acceptance + unit tests completed successfully. |
 | `npm run build -w apps/api` | ✅ Pass | TypeScript build completed successfully. |
 | `npm run build -w apps/web` | ✅ Pass | Uses `NEXT_IGNORE_INCORRECT_LOCKFILE=1` to skip Next.js lockfile patching without network access. |
 
@@ -16,7 +16,22 @@
 ### Commands
 | Command | Result | Notes |
 | --- | --- | --- |
-| `npm run dev -w apps/web` | ✅ Pass | `NEXT_IGNORE_INCORRECT_LOCKFILE=1` set in the script to avoid lockfile patching without network access. Used for UI review. |
+| Not run (not requested) | ⚠️ Skipped | No dev server smoke test was requested for this change set. |
+
+## Review Recommendation Verification
+
+### 1) SESSION_SECRET production hardening
+- Added `getSessionSecret()` validation to reject missing/short/`dev-secret` in production and keep a dev fallback outside production. (apps/api/src/sessions.ts:3-25)
+- Session middleware now uses the validated secret helper at startup. (apps/api/src/app.ts:57-70)
+- Docs updated to mark `SESSION_SECRET` as required in production with a >= 32 char recommendation. (.env.example:1-8; RUNBOOK.md:6-14)
+
+### 2) Drive metadata returns (parentId + version)
+- Drive create/update now request `id, parents, version` and map nullable parent/version values without hardcoded defaults. (apps/api/src/drive.ts:120-238)
+- Unit tests cover create/update returning accurate parentId/version and nulls when missing. (apps/api/tests/unit.test.js:38-135)
+
+### 3) OpenAI timeout + retry/backoff
+- OpenAI requests include a timeout and retry once for retryable errors with exponential backoff + jitter. (apps/api/src/openai.ts:28-120)
+- Unit tests simulate timeout and 429/5xx retry behavior. (apps/api/tests/unit.test.js:137-236)
 
 ## Compliance Checklist (Authoritative Constraints)
 

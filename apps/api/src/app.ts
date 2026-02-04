@@ -13,7 +13,7 @@ import type { GoogleApi, GoogleApiClient } from "./googleApi";
 import { logEvent } from "./logger";
 import { createOpenAIClient } from "./openai";
 import type { OpenAIClient } from "./openai";
-import { cleanupExpiredSessions, createSessionStore, getSessionTtlMs } from "./sessions";
+import { cleanupExpiredSessions, createSessionStore, getSessionSecret, getSessionTtlMs } from "./sessions";
 import type {
   EntryRecord,
   IndexPackRecord,
@@ -132,7 +132,7 @@ export const createApp = (options: Partial<AppContext> = {}) => {
   app.use(express.json());
   app.use(
     session({
-      secret: process.env.SESSION_SECRET ?? "dev-secret",
+      secret: getSessionSecret(),
       resave: false,
       saveUninitialized: false,
       store: createSessionStore(prisma),
