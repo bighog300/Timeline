@@ -8,12 +8,15 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  image     String?
-  createdAt DateTime  @default(now())
-  sessions  Session[]
+  id               String            @id @default(uuid())
+  email            String            @unique
+  name             String?
+  image            String?
+  createdAt        DateTime          @default(now())
+  sessions         Session[]
+  driveConnections DriveConnection[]
+  driveFileRefs    DriveFileRef[]
+  indexState       IndexState?
 }
 
 model Session {
@@ -24,4 +27,56 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DriveConnection {
+  id                   String   @id @default(uuid())
+  userId               String
+  provider             String   @default("google")
+  scopes               String
+  refreshTokenEncrypted String
+  accessTokenEncrypted String?
+  tokenExpiry          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+enum DriveFileStatus {
+  NEW
+  INDEXED
+  SKIPPED
+  ERROR
+}
+
+model DriveFileRef {
+  id           String         @id @default(uuid())
+  userId       String
+  driveFileId  String
+  name         String
+  mimeType     String
+  modifiedTime DateTime?
+  sizeBytes    BigInt?
+  checksum     String?
+  status       DriveFileStatus @default(NEW)
+  lastError    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, driveFileId])
+  @@index([userId])
+}
+
+model IndexState {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  cursor     String?
+  lastRunAt  DateTime?
+  lastFileId String?
+  statsJson  Json?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

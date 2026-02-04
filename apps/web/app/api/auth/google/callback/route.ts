@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getEnv } from "../../../../../src/env";
 import { prisma } from "../../../../../src/server/db/prisma";
 import { createSession } from "../../../../../src/server/auth/session";
+import { encryptString } from "../../../../../src/server/crypto/encryption";
 
 const STATE_COOKIE_NAME = "__Host-timeline-google-oauth-state";
 
@@ -12,6 +13,8 @@ type GoogleTokenResponse = {
   id_token?: string;
   expires_in?: number;
   token_type?: string;
+  refresh_token?: string;
+  scope?: string;
   error?: string;
   error_description?: string;
 };
@@ -121,6 +124,52 @@ export const GET = async (request: Request) => {
       image: userInfo.picture ?? null,
     },
   });
+
+  const tokenExpiry = tokenResponse.expires_in
+    ? new Date(Date.now() + tokenResponse.expires_in * 1000)
+    : null;
+  const scopes = tokenResponse.scope ?? env.GOOGLE_OAUTH_SCOPES;
+
+  if (tokenResponse.refresh_token) {
+    await prisma.driveConnection.upsert({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: "google",
+        },
+      },
+      update: {
+        scopes,
+        refreshTokenEncrypted: encryptString(tokenResponse.refresh_token),
+        accessTokenEncrypted: tokenResponse.access_token
+          ? encryptString(tokenResponse.access_token)
+          : undefined,
+        tokenExpiry: tokenExpiry ?? undefined,
+      },
+      create: {
+        userId: user.id,
+        provider: "google",
+        scopes,
+        refreshTokenEncrypted: encryptString(tokenResponse.refresh_token),
+        accessTokenEncrypted: tokenResponse.access_token
+          ? encryptString(tokenResponse.access_token)
+          : undefined,
+        tokenExpiry: tokenExpiry ?? undefined,
+      },
+    });
+  } else if (tokenResponse.access_token) {
+    await prisma.driveConnection.updateMany({
+      where: {
+        userId: user.id,
+        provider: "google",
+      },
+      data: {
+        scopes,
+        accessTokenEncrypted: encryptString(tokenResponse.access_token),
+        tokenExpiry: tokenExpiry ?? undefined,
+      },
+    });
+  }
 
   await createSession(user.id);
 
